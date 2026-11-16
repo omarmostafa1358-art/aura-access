@@ -1,0 +1,217 @@
+/* ==========================================================================
+   AuraAccess: app shell   css/app-shell.css   (load AFTER css/styles.css and css/places.css)
+   ---------------------------------------------------------------------------
+   Turns the page into an app that behaves the same on phone, tablet and desktop.
+   Everything lives in the existing "responsive" cascade layer, which comes after
+   layout and components, so these rules win without !important.
+
+   WHAT CHANGES, BY SCREEN
+     all sizes            the four tabs are a bottom tab bar (fixed to the bottom edge), as in a native app;
+                          on wide screens the tabs sit centred in it
+     >= 64rem (desktop)   the accessibility toolbar is always open in one row at the top (sticky when the
+                          screen is tall enough), list and map side by side, 3-column grids
+     <  64rem (tablet,    compact top bar: logo, voice, account, and ONE button that opens the
+               phone)     accessibility toolbar as a panel; the top bar stays put while the view scrolls
+     <  48rem (phone)     the dialog fills the whole screen, the toast sits above the tab bar
+
+   RULES THAT NEVER CHANGE
+     - every target is at least 48 x 48 px (--tap), at any size
+     - the top bar is NOT sticky when text is enlarged (html.text-large), on short screens, or
+       in landscape phones: it can never cover the page (WCAG 1.4.10, 2.4.11)
+     - motion (panel chevron, view fade) only runs when the person has not asked to reduce it
+     - the tab bar and the dialogs honour the notch and home bar (viewport-fit=cover + env())
+   Class hooks added by scripts: html.js-router (js/router.js), html.js-shell (js/shell.js),
+   html.text-large (js/app.js). Without them the page degrades to the plain stacked layout.
+   ========================================================================== */
+@layer responsive {
+
+  /* ---------- 1. App-like foundation (all sizes) ---------- */
+  html {
+    scrollbar-gutter: stable;                  /* switching between a short and a long view never shifts the layout sideways */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overscroll-behavior-y: contain;            /* no accidental pull-to-refresh while scrolling a view */
+  }
+  body {
+    padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+  }
+  /* The footer rests on the bottom edge even when a view is short (Settings), so views never "float" */
+  #page-wrapper { display: flex; flex-direction: column; min-block-size: 100vh; min-block-size: 100dvh; }
+  #page-wrapper > .site-main { flex: 1 0 auto; }
+
+  button, [role="tab"], summary, .btn, .chip, .icon-btn, .a11y-btn, .a11y-toggle, .check {
+    touch-action: manipulation;                /* no 300 ms tap delay, no double-tap zoom on controls */
+    -webkit-tap-highlight-color: transparent;
+  }
+  button, [role="tab"], .a11y-btn, .a11y-toggle { -webkit-user-select: none; user-select: none; }
+
+  /* Anything focused from the keyboard scrolls clear of the sticky top bar and the bottom tab bar */
+  html { scroll-padding-block-end: calc(var(--dock-h, 0px) + 1rem); }
+
+  /* ---------- 1b. Bottom tab bar (the four views): ALL screen sizes ----------
+     The same bar on a phone and on a 27-inch monitor. On wide screens the bar spans the screen and the
+     four tabs sit centred in it, so they are never stretched across 1500 px. */
+  /* 2c. Bottom tab bar (the four views) */
+  html.js-router .main-nav {
+    display: block;
+    position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 120;
+    flex: none; inline-size: auto;
+    padding: var(--space-1) max(var(--space-2), env(safe-area-inset-right, 0px))
+             max(var(--space-1), env(safe-area-inset-bottom, 0px)) max(var(--space-2), env(safe-area-inset-left, 0px));
+    background: var(--surface);
+    border-block-start: 2px solid var(--border-strong);
+    box-shadow: 0 -8px 24px rgb(11 31 58 / .08);
+  }
+  html.js-router .main-nav__list { display: grid; inline-size: min(100%, 44rem); margin-inline: auto; grid-template-columns: repeat(4, minmax(0, 1fr)); flex-direction: row; gap: var(--space-1); }
+  html.js-router .main-nav__link {
+    flex-direction: column; justify-content: flex-start; gap: 2px;
+    min-block-size: 3.75rem;                              /* 60 px: comfortably above the 48 px minimum */
+    padding: var(--space-2) 2px var(--space-1);
+    font-size: clamp(0.75rem, 0.62rem + 0.5vw, 0.9375rem); line-height: 1.25;
+    text-align: center; overflow-wrap: anywhere;
+    border-radius: var(--radius-m);
+  }
+  html.js-router .main-nav__link { min-inline-size: 0; }
+  html.js-router .tab-icon { display: block; flex: none; }
+  /* Current view: a bar on the TOP edge of the tab (not colour alone: also bold + tinted) */
+  html.js-router .main-nav__link[aria-selected="true"] { background: var(--tint); }
+  html.js-router .main-nav__link[aria-selected="true"]::after {
+    inset-inline: 20%; inset-block: 0 auto; block-size: 4px; border-radius: 0 0 4px 4px;
+  }
+  /* Room for the bar under the last line of content, and for the toast above it */
+  #page-wrapper { padding-block-end: var(--dock-h, 0px); }
+  .toast { inset-block-end: calc(var(--dock-h, 0px) + max(var(--space-4), env(safe-area-inset-bottom, 0px))); }
+
+  html.js-router .nav-toggle { display: none; }          /* the tab bar replaces the hamburger */
+
+  /* ---------- 2. Tablet and phone shell: < 64rem ---------- */
+  @media (max-width: 63.99rem) {
+
+    /* 2a. Top bar: sticky when the screen is tall enough and the text is not enlarged */
+    .site-header { position: relative; z-index: 1; padding-block: var(--space-2); }
+    .site-header__inner { flex-wrap: nowrap; justify-content: space-between; gap: var(--space-3); }
+    .header-actions { margin-inline-start: auto; flex-wrap: nowrap; }
+
+    /* 2b. The accessibility toolbar folds behind one button (js/shell.js) */
+    .js-shell .a11y-bar { position: relative; z-index: 2; padding-block: var(--space-2); }
+    .js-shell .a11y-bar__title {                           /* the toggle shows the same words */
+      position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+    }
+    .js-shell .a11y-toggle {
+      display: flex; align-items: center; gap: var(--space-3);
+      inline-size: 100%; min-block-size: var(--tap);
+      padding: 0.25em var(--space-4);
+      font: inherit; font-weight: 700; text-align: start;
+      color: var(--bar-text); background: transparent;
+      border: 2px solid currentColor; border-radius: var(--radius-pill); cursor: pointer;
+    }
+    .js-shell .a11y-toggle:hover { background: rgb(255 255 255 / .1); }
+    .js-shell .a11y-toggle[aria-expanded="true"] { background: rgb(255 255 255 / .14); }
+    .a11y-toggle__text { flex: 1 1 auto; }
+    .a11y-toggle__icon, .a11y-toggle__chev { flex: none; }
+    .js-shell .a11y-toggle[aria-expanded="false"] ~ .a11y-bar__inner { display: none; }
+    .js-shell .a11y-toggle[aria-expanded="true"] ~ .a11y-bar__inner {
+      position: absolute; inset-inline: 0; inset-block-start: 100%; z-index: 3;
+      padding: var(--space-3) var(--band-pad) var(--space-4);
+      background: var(--bar-bg); color: var(--bar-text);
+      border-block-start: 1px solid rgb(255 255 255 / .2);
+      box-shadow: var(--shadow-float);
+      max-block-size: calc(100vh - var(--chrome-h, 7rem) - var(--dock-h, 0px));
+      max-block-size: calc(100dvh - var(--chrome-h, 7rem) - var(--dock-h, 0px));
+      overflow-y: auto; overscroll-behavior: contain;
+    }
+    .js-shell .a11y-toggle[aria-expanded="true"] .a11y-toggle__chev { transform: rotate(180deg); }
+    @media (prefers-reduced-motion: no-preference) {
+      .a11y-toggle__chev { transition: transform var(--motion-fast); }
+    }
+
+    /* Enlarged text (150% and up): four narrow tabs cannot hold the words, and a fixed bar would
+       cover too much of the screen. The tabs return to the top, in two columns, and scroll with the page. */
+    html.text-large .site-header__inner { flex-wrap: wrap; }
+    html.text-large .header-actions { order: 2; }
+    html.text-large.js-router .main-nav {
+      position: static; order: 3; flex: 1 0 100%;
+      padding: 0; background: transparent; border: 0; box-shadow: none;
+    }
+    html.text-large.js-router .main-nav__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    html.text-large.js-router .main-nav__link { flex-direction: row; justify-content: center; gap: var(--space-2); font-size: inherit; }
+    html.text-large.js-router .main-nav__link[aria-selected="true"]::after { inset-block: auto 0.25rem; inset-inline: 1em; block-size: 3px; border-radius: 2px; }
+
+  }
+
+  /* The sticky top bar needs height to spare (and never when text is enlarged) */
+  @media (max-width: 63.99rem) and (min-height: 42rem) {
+    html:not(.text-large) .top-chrome {
+      position: sticky; inset-block-start: 0;
+      box-shadow: 0 1px 0 var(--border), 0 8px 24px rgb(11 31 58 / .08);
+    }
+    html:not(.text-large) { --scroll-pad: calc(var(--chrome-h, 7rem) + 1rem); }
+  }
+
+  /* ---------- 3. Phones: < 48rem ---------- */
+  @media (max-width: 47.99rem) {
+    :root { --gutter: 1rem; }
+
+    /* Account button keeps its name for screen readers and shows only the icon (a 48 px square) */
+    .profile-btn__text {
+      position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+    }
+    .profile-btn { padding-inline: 0; }
+    .profile-panel { inset-inline-end: auto; inset-inline-start: 0; max-inline-size: calc(100vw - 2rem); }
+
+    /* Dialog: the whole screen, header and actions pinned, content scrolls between them */
+    .modal { place-items: stretch; padding: 0; }
+    .modal__dialog {
+      inline-size: 100%;
+      block-size: 100vh; block-size: 100dvh; max-block-size: none;
+      gap: var(--space-3);
+      padding: 0 max(var(--space-4), env(safe-area-inset-right, 0px)) 0 max(var(--space-4), env(safe-area-inset-left, 0px));
+      border-radius: 0; border-inline-width: 0; border-block-end-width: 0;
+    }
+    .modal__header {
+      position: sticky; inset-block-start: 0; z-index: 2;
+      padding-block: max(var(--space-3), env(safe-area-inset-top, 0px)) var(--space-3);
+      background: var(--surface);
+    }
+    .modal__actions {
+      position: sticky; inset-block-end: 0; z-index: 2;
+      margin-block-start: auto;
+      padding-block: var(--space-3) max(var(--space-3), env(safe-area-inset-bottom, 0px));
+      background: var(--surface);
+    }
+    .booking-form { flex: 1 0 auto; }
+
+    /* Map and list stack; the map keeps a usable height */
+    .gmap-frame { block-size: clamp(14rem, 38vh, 22rem); }
+  }
+
+  /* Short landscape phones: nothing sticky on top, a slimmer tab bar */
+  @media (max-height: 32rem) and (orientation: landscape) and (max-width: 63.99rem) {
+    html.js-router .main-nav__link { min-block-size: var(--tap); flex-direction: row; justify-content: center; gap: var(--space-2); }
+    html.js-router .tab-icon { inline-size: 20px; block-size: 20px; }
+    .modal__dialog { padding-block-start: 0; }
+  }
+
+  /* ---------- 4. Desktop: >= 64rem ---------- */
+  @media (min-width: 64rem) {
+    .a11y-toggle { display: none; }                         /* the toolbar is always open here */
+    .a11y-bar { padding-block: var(--space-2); }
+    /* One row at 1024 px: the title is redundant next to the buttons */
+    .a11y-bar__title { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .a11y-bar__inner { flex-basis: 100%; }
+    .site-header { padding-block: var(--space-2); }
+  }
+  @media (min-width: 90rem) {
+    .a11y-bar__title { position: static; inline-size: auto; block-size: auto; overflow: visible; clip-path: none; }
+    .a11y-bar__inner { flex-basis: 32rem; }
+    .places-layout { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+    .gmap-frame { block-size: clamp(22rem, 52vh, 38rem); }
+  }
+  /* The sticky desktop bar must not eat a short laptop screen: allow it from 48rem of height as before */
+
+  /* ---------- 5. Preferences ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    .a11y-toggle__chev, .main-nav, .main-nav__link { transition: none !important; }
+    html { scroll-behavior: auto; }
+  }
+}

@@ -1,0 +1,1373 @@
+/* ==========================================================================
+   AuraAccess — styles.css  (redesign: "Deep Navy and Teal")
+   WCAG 2.1 AA · RTL-first (logical properties) · rem-based and scalable
+
+   Architecture (cascade layers, lowest to highest priority):
+     tokens      palette and design tokens (:root custom properties)
+     base        reset, typography, forms, touch-target safety net, reduced motion
+     layout      page bands, sticky header, hero, grids
+     components  toolbar, buttons, cards, badges, modal, toast ...
+     responsive  mobile / tablet / desktop / wide adjustments
+     focus       the keyboard focus indicator (wins over component box-shadows)
+     themes      .high-contrast and .dyslexic-font
+     utilities   .visually-hidden, [hidden]
+
+   Hooks the JavaScript is expected to use (unchanged by the redesign):
+     html.js                     added on load; enables nav collapse
+     html.high-contrast          high-contrast theme (class works on <html> or <body>)
+     html.dyslexic-font          dyslexia-friendly typography
+     html { --font-scale: 1.3 }  text scaling, 1 to 2
+     html.is-modal-open          locks page scroll behind the dialog
+     #toast[data-state]          "idle" | "visible"
+
+   Fonts: "IBM Plex Sans Arabic" (body) and "Lexend" (dyslexia mode) are linked
+   in the <head>. If they fail to load, the system fonts in the stacks take over.
+   ========================================================================== */
+
+@layer tokens, base, layout, components, responsive, focus, themes, utilities;
+
+/* OpenDyslexic is used when it is installed on the device. To ship it with the
+   site, add its .woff2 file (SIL Open Font License) and one more source, e.g.
+   url("../fonts/OpenDyslexic-Regular.woff2") format("woff2"). Without it the
+   stack falls back to Lexend (loaded from the <head> link), then Verdana. */
+@font-face {
+  font-family: "OpenDyslexic";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local("OpenDyslexic"), local("OpenDyslexic Regular"), local("OpenDyslexic-Regular");
+}
+@font-face {
+  font-family: "OpenDyslexic";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local("OpenDyslexic Bold"), local("OpenDyslexic-Bold");
+}
+
+
+/* ==========================================================================
+   1. TOKENS
+   Palette "Deep Navy and Teal". Every pairing below was measured (WCAG 2.1):
+
+   TEXT (needs 4.5:1)                                   ratio
+     body text  #0F1B2D on page #F4F7FA / card #FFFFFF  16.1 / 17.3
+     muted text #46566B on page / card / teal wash       7.0 / 7.5 / 6.5
+     headings   #12294A on page                          13.6
+     link and secondary text #0F766E on page / card      5.1 / 5.5
+     white on primary button #0F766E / hover #115E59     5.5 / 7.6
+     white on navy #0B1F3A (hero, bar, footer)           16.5
+     soft grey #CBD5E1 on navy                           11.1
+     teal #5EEAD4 on navy (accent on dark)               11.2
+   CONTROLS AND ICONS (need 3:1)
+     field and button borders #627084 on card / page     5.0 / 4.7
+     toolbar button border #8095B0 on navy               5.4
+   STATUS (text on its own wash)
+     open #0B5A3C on #E3F6EE 7.4 · partial #6B3E00 on #FFF4D6 8.3
+     closed #8A1C1C on #FDE8E8 7.9 · danger #B42318 on white 6.6
+   FOCUS: amber ring between two navy edges. Amber alone is only 2.2:1 on
+   white, but navy against white is 17:1 and navy against amber 7.7:1, so
+   the ring is visible on white, grey, teal and navy alike.
+   ========================================================================== */
+@layer tokens {
+  :root {
+    color-scheme: light;
+
+    /* --- Raw palette (components never read these directly) --- */
+    --navy-950: #071528;
+    --navy-900: #0B1F3A;   /* structure: hero, toolbar, toast */
+    --navy-800: #12294A;   /* headings, secondary buttons */
+    --navy-700: #1B3A66;
+    --teal-300: #5EEAD4;   /* accent on dark surfaces only */
+    --teal-700: #0F766E;   /* accent on light surfaces: links, primary buttons */
+    --teal-800: #115E59;
+    --teal-900: #134E4A;
+    --amber-500: #F59E0B;  /* focus only */
+
+    /* --- Semantic colors: components read only these --- */
+    --bg:            #F4F7FA;            /* soft cool grey: low glare, less eye strain */
+    --surface:       #FFFFFF;
+    --surface-2:     #EAF0F6;            /* quiet panels and stripes */
+    --text:          #0F1B2D;
+    --text-muted:    #46566B;
+    --heading:       var(--navy-800);
+    --link:          var(--teal-700);
+    --link-hover:    var(--teal-900);
+
+    --primary:        var(--teal-700);
+    --primary-hover:  var(--teal-800);
+    --on-primary:     #FFFFFF;
+
+    --accent:         var(--teal-700);   /* bars and marks on light surfaces */
+    --on-accent:      var(--navy-900);
+    --accent-text:    var(--teal-700);
+    --accent-on-dark: var(--teal-300);   /* the same accent, tuned for navy */
+
+    --tint:           #E4F2F0;           /* teal wash: hover and selected backgrounds */
+    --border:         #D3DCE6;           /* decorative dividers */
+    --border-strong:  #627084;           /* controls: 4.7:1 or better, meets 1.4.11 */
+
+    --danger:         #B42318;
+    --on-danger:      #FFFFFF;
+    --danger-text:    #B42318;
+
+    /* Status: text and a glyph carry the meaning, colour only reinforces it */
+    --ok-bg:   #E3F6EE; --ok-text:   #0B5A3C; --ok-border:   #12805A;
+    --warn-bg: #FFF4D6; --warn-text: #6B3E00; --warn-border: #B26A00;
+    --bad-bg:  #FDE8E8; --bad-text:  #8A1C1C; --bad-border:  #C0392B;
+
+    /* Large surfaces */
+    --hero-bg:        var(--navy-900);
+    --hero-image:     radial-gradient(48rem 26rem at 88% -8%, rgb(94 234 212 / .20), transparent 62%),
+                      linear-gradient(135deg, #0B1F3A 0%, #12294A 55%, #0F3D4F 100%);
+    --hero-text:      #FFFFFF;
+    --hero-muted:     #CBD5E1;
+    --bar-bg:         var(--navy-900);
+    --bar-text:       #FFFFFF;
+    --bar-border:     #8095B0;
+    --bar-on-bg:      var(--teal-300);   /* pressed toggle */
+    --bar-on-text:    var(--navy-900);
+    --footer-bg:      var(--navy-950);
+    --footer-text:    #CBD5E1;
+    --footer-link:    #FFFFFF;
+    --overlay:        rgb(7 21 40 / .72);
+    --toast-bg:       var(--navy-900);
+    --toast-text:     #FFFFFF;
+
+    /* Focus indicator: 4px amber ring wrapped in a thin navy edge on both sides */
+    --focus-ring:   var(--amber-500);
+    --focus-edge:   var(--navy-900);
+    --focus-width:  4px;
+    --focus-offset: 2px;
+    --focus-edge-w: 2px;
+
+    /* Motion: the reduced-motion query sets these to 0s */
+    --motion-fast: .15s;
+    --motion-med:  .2s;
+
+    /* Space between neighbouring touch targets (grows on touch screens) */
+    --target-gap: 0.75rem;
+
+    --shadow-card:  0 1px 2px rgb(11 31 58 / .06), 0 6px 20px rgb(11 31 58 / .06);
+    --shadow-hover: 0 2px 4px rgb(11 31 58 / .08), 0 14px 32px rgb(11 31 58 / .13);
+    --shadow-float: 0 14px 44px rgb(7 21 40 / .30);
+
+    --selection-bg:   var(--navy-800);
+    --selection-text: #FFFFFF;
+    --tag-border:     #A9C9C5;
+    --tile-filter:    none;               /* map tiles: inverted in the dark theme */
+
+    /* --- Typography --- */
+    --font-scale: 1;   /* set by the toolbar, 1 to 2 */
+    --font-body: "IBM Plex Sans Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma,
+                 system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    /* Dyslexia mode. Each font only supplies the glyphs it has, so Latin letters
+       come from OpenDyslexic / Lexend / Verdana and Arabic from Noto Sans Arabic
+       or Tahoma (wide, open letter shapes), then the system font. */
+    --font-dyslexic: "OpenDyslexic", "Lexend", Verdana, "Noto Sans Arabic", Tahoma,
+                     system-ui, sans-serif;
+
+    /* Type scale (rem, so it follows --font-scale and browser settings) */
+    --fs-xs:   0.875rem;
+    --fs-sm:   0.9375rem;
+    --fs-base: 1rem;
+    --fs-md:   1.125rem;
+    --fs-lg:   clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+    --fs-xl:   clamp(1.625rem, 1.3rem + 1.4vw, 2.25rem);
+    --fs-2xl:  clamp(2.125rem, 1.5rem + 3vw, 3.5rem);
+
+    --lh-body:  1.75;
+    --lh-tight: 1.3;
+    --ls-body:  0;
+    --ws-body:  0;
+    --measure:  65ch;
+
+    /* --- Space, shape, layout --- */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+    --space-7: 3rem;
+    --space-8: 4.5rem;
+    --space-9: 6rem;
+
+    --radius-s: 0.625rem;
+    --radius-m: 1rem;
+    --radius-l: 1.5rem;
+    --radius-pill: 999px;
+
+    --tap: 3rem;                          /* minimum target size: 48px at 100% text size */
+    --border-w: 2px;
+    --content-max: 74rem;
+    --gutter: clamp(1rem, 4vw, 2.5rem);
+    --band-pad: max(var(--gutter), calc((100% - var(--content-max)) / 2));
+
+    /* Room kept above anchors and focused items so the sticky header never covers them */
+    --scroll-pad: 1rem;
+  }
+}
+
+
+/* ==========================================================================
+   2. BASE
+   ========================================================================== */
+@layer base {
+  /* Long unbreakable strings (e-mail addresses, URLs) must wrap instead of
+     pushing the page sideways at 400px and 200% text size (WCAG 1.4.10 Reflow). */
+  a, bdi { overflow-wrap: anywhere; }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    /* Percent keeps the user's browser size; --font-scale adds the toolbar's step */
+    font-size: calc(100% * var(--font-scale, 1));
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* A keyboard-focused element is never hidden behind the sticky header or the toast (WCAG 2.4.11) */
+    scroll-padding-block: var(--scroll-pad) 6rem;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+
+  body {
+    margin: 0;
+    min-block-size: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: var(--fs-base);
+    line-height: var(--lh-body);
+    letter-spacing: var(--ls-body);
+    word-spacing: var(--ws-body);
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+    /* Spacing and line height ease when a display mode is switched. The typeface
+       itself cannot be animated. The motion tokens are 0s under reduced motion. */
+    transition: line-height var(--motion-med), letter-spacing var(--motion-med), word-spacing var(--motion-med);
+  }
+
+  h1, h2, h3, h4 {
+    margin: 0;
+    color: var(--heading);
+    line-height: var(--lh-tight);
+    text-wrap: balance;
+  }
+  h1 { font-size: var(--fs-2xl); font-weight: 700; }
+  h2 { font-size: var(--fs-xl);  font-weight: 700; }
+  h3 { font-size: var(--fs-lg);  font-weight: 700; }
+
+  p { margin: 0; max-inline-size: var(--measure); text-wrap: pretty; }
+  ul, ol { margin: 0; padding: 0; list-style: none; }
+  address { font-style: normal; }
+  svg { flex: none; }
+  img, svg { max-inline-size: 100%; }
+  fieldset { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+  legend { padding: 0; font-weight: 700; }
+
+  a {
+    color: var(--link);
+    text-decoration-thickness: 0.1em;
+    text-underline-offset: 0.22em;
+  }
+  a:hover { color: var(--link-hover); text-decoration-thickness: 0.18em; }
+
+  /* ---- Touch-target safety net ----
+     Every interactive element is at least 48px tall, even one nobody styled.
+     :where() keeps specificity at zero so any component rule can refine it.
+     Checkboxes and radios are excluded: their <label> is the 48px target.
+     Inline links inside running text are exempt (WCAG 2.5.8 inline exception). */
+  :where(a[href], button, select, textarea, summary, [role="button"],
+         input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"])) {
+    min-block-size: var(--tap);
+    touch-action: manipulation;                      /* no double-tap zoom delay */
+    -webkit-tap-highlight-color: rgb(15 118 110 / .18);
+  }
+
+  ::selection { background: var(--selection-bg); color: var(--selection-text); }
+
+  /* ---- Form controls ---- */
+  label { font-weight: 700; }
+
+  input[type="text"], input[type="email"], input[type="search"],
+  input[type="date"], input[type="tel"], select, textarea {
+    inline-size: 100%;
+    min-block-size: var(--tap);
+    padding: 0.55em 0.9em;
+    font: inherit;
+    letter-spacing: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: var(--border-w) solid var(--border-strong);
+    border-radius: var(--radius-s);
+    transition: border-color var(--motion-fast), background-color var(--motion-fast);
+  }
+  input[type="text"]:hover, input[type="email"]:hover, input[type="search"]:hover,
+  input[type="date"]:hover, input[type="tel"]:hover, select:hover, textarea:hover { border-color: var(--heading); }
+  textarea { min-block-size: 7rem; resize: vertical; }
+  input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1; }
+
+  input[type="checkbox"], input[type="radio"] {
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    margin: 0;
+    flex: none;
+    accent-color: var(--primary);
+  }
+
+  [aria-invalid="true"] {
+    border-color: var(--danger);
+    border-width: 4px;   /* thickness change, so it is not color alone */
+  }
+
+  /* ---- Reduced motion ----
+     1. The motion tokens drop to 0s, so state changes become instant.
+     2. A catch-all removes any animation or transition added later. It uses
+        !important on purpose: important declarations in EARLIER layers win, so
+        no component or theme can switch motion back on.
+     3. Smooth scrolling is only enabled under "no-preference" (see html above).
+     JavaScript must honour the same preference before calling scrollIntoView
+     with behavior:"smooth":
+       matchMedia("(prefers-reduced-motion: reduce)").matches                   */
+  @media (prefers-reduced-motion: reduce) {
+    :root { --motion-fast: 0s; --motion-med: 0s; }
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+
+/* ==========================================================================
+   3. LAYOUT
+   Page = full-bleed bands. Each band pads itself with --band-pad, so its
+   content lines up in one centred column (max 74rem) at every width.
+   ========================================================================== */
+@layer layout {
+
+  .a11y-bar,
+  .site-header,
+  .hero,
+  .section,
+  .site-footer { padding-inline: var(--band-pad); }
+
+  .section { padding-block: var(--space-8); }
+  .section__header { display: flex; flex-direction: column; gap: var(--space-3); margin-block-end: var(--space-6); }
+
+  /* Bands alternate between page grey and white so sections read as chapters */
+  #opportunities { background: var(--surface); border-block: 1px solid var(--border); }
+
+  /* ---- Accessibility bar (not sticky: it must not hide content at 200% text) ---- */
+  .a11y-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-5); background: var(--bar-bg); color: var(--bar-text); padding-block: var(--space-3); }
+  .a11y-bar__inner { flex: 1 1 32rem; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); }
+  .a11y-group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--target-gap); min-inline-size: 0; }   /* wraps at 200% text on a 320px screen */
+
+  /* ---- Header and navigation ---- */
+  .site-header {
+    background: var(--surface);
+    border-block-end: 1px solid var(--border);
+    padding-block: var(--space-3);
+    z-index: 100;
+  }
+  .site-header__inner { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-5); }
+  .header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-inline-start: auto; min-inline-size: 0; max-inline-size: 100%; }
+
+  .main-nav { flex: 1 1 auto; }
+  .main-nav__list { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-1); }
+
+  /* The toolbar and the header form ONE block that stays at the top in every view.
+     It is sticky only when the screen can spare the height (tall and wide enough) and the
+     text is not enlarged much: on phones, in landscape, and from 150% text it scrolls away,
+     so at 200% text it can never cover the page (WCAG 1.4.10 and 2.4.11).
+     js/router.js keeps --chrome-h equal to its real height, so scroll-padding matches. */
+  .top-chrome { position: relative; z-index: 100; }
+  @media (min-width: 48rem) and (min-height: 48rem) {
+    .top-chrome {
+      position: sticky;
+      inset-block-start: 0;
+      box-shadow: 0 1px 0 var(--border), 0 8px 24px rgb(11 31 58 / .06);
+    }
+    :root { --scroll-pad: calc(var(--chrome-h, 5.75rem) + 1rem); }
+  }
+  html.text-large .top-chrome { position: relative; box-shadow: none; }
+  html.text-large { --scroll-pad: 1rem; }
+
+  /* Tabs are buttons that only work with the router: without it the menu is hidden */
+  html:not(.js-router) .main-nav:has([role="tablist"]) { display: none; }
+
+  /* Nav collapse on narrow screens. The toggle button itself is shown/hidden in the
+     components layer (it must live next to the button rules that set its display). */
+  @media (max-width: 63.99rem) {
+    .js .nav-toggle[aria-expanded="false"] ~ .main-nav { display: none; }
+    .main-nav { flex-basis: 100%; }
+    .main-nav__list { flex-direction: column; }
+    .header-actions { margin-inline-start: 0; }
+  }
+
+  /* ---- Hero ---- */
+  .hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding-block: var(--space-8);
+    background-color: var(--hero-bg);
+    background-image: var(--hero-image);
+    color: var(--hero-text);
+  }
+  .hero__content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-5); max-inline-size: 46rem; }
+  .hero__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+
+  /* ---- Card grids ---- */
+  /* Services: four category cards */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: var(--space-5);
+  }
+  /* Opportunities: individual listings; auto-fill keeps card width steady while filtering */
+  .opp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.5rem), 1fr));
+    gap: var(--space-5);
+  }
+  .card-grid__item, .opp-grid__item { display: flex; min-inline-size: 0; }
+  .card-grid__item > .card, .opp-grid__item > .card { inline-size: 100%; }
+
+  /* Directory: one column, then two */
+  .place-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
+  .place-list__item { display: flex; min-inline-size: 0; }
+  .place-list__item > .place { inline-size: 100%; }
+  @media (min-width: 48rem) {
+    .place-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  /* Filter forms: fields flow into as many columns as fit */
+  .filter-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: var(--space-4) var(--space-5);
+    align-items: start;
+    margin-block-end: var(--space-5);
+    padding: var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    box-shadow: var(--shadow-card);
+  }
+  #opportunities .filter-form { background: var(--bg); box-shadow: none; }
+  .filter-form .form-actions { align-self: end; }
+
+  .form-field { display: flex; flex-direction: column; gap: var(--space-2); min-inline-size: 0; }
+  .form-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+  .check-row, .chip-row { display: flex; flex-wrap: wrap; gap: var(--target-gap) var(--space-4); }
+  .chip-row { gap: var(--target-gap); }
+  .tag-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+  /* ---- Footer ---- */
+  .site-footer { background: var(--footer-bg); color: var(--footer-text); padding-block: var(--space-8) var(--space-5); }
+  .site-footer__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: var(--space-6);
+  }
+  .footer-list { display: flex; flex-direction: column; gap: var(--space-1); }
+}
+
+
+/* ==========================================================================
+   4. COMPONENTS
+   ========================================================================== */
+@layer components {
+
+  /* ---- Skip link ---- */
+  .skip-link {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: var(--space-4);
+    z-index: 2000;
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap);
+    padding: var(--space-3) var(--space-5);
+    background: var(--navy-800);
+    color: #FFFFFF;
+    font-weight: 700;
+    border-radius: 0 0 var(--radius-s) var(--radius-s);
+    transform: translateY(-150%);
+  }
+  .skip-link:focus { transform: none; }
+
+  /* ---- Buttons ---- */
+  .btn, .a11y-btn, .nav-toggle, .profile-btn, .chip, .icon-btn, .toast__dismiss {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-block-size: var(--tap);
+    min-inline-size: var(--tap);
+    padding: 0.4em 1.25em;
+    font: inherit;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: inherit;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    color: var(--text);
+    background: var(--surface);
+    border: var(--border-w) solid var(--border-strong);
+    border-radius: var(--radius-s);
+    /* box-shadow is deliberately NOT transitioned: the focus ring must appear instantly */
+    transition: background-color var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast);
+  }
+  .btn:hover, .nav-toggle:hover, .profile-btn:hover, .chip:hover, .icon-btn:hover { background: var(--tint); color: var(--text); border-color: var(--heading); }
+
+  .btn--primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); box-shadow: 0 1px 2px rgb(11 31 58 / .18); }
+  .btn--primary:hover { background: var(--primary-hover); color: var(--on-primary); border-color: var(--primary-hover); }
+
+  .btn--secondary { background: var(--surface); color: var(--heading); border-color: var(--heading); }
+  .btn--secondary:hover { background: var(--tint); }
+
+  .btn--sos { background: var(--danger); color: var(--on-danger); border-color: var(--on-danger); }
+  .btn--sos:hover { background: var(--danger); color: var(--on-danger); filter: brightness(.9); }
+  .btn__icon {
+    display: inline-grid; place-items: center;
+    inline-size: 1.5rem; block-size: 1.5rem;
+    border: 2px solid currentColor; border-radius: 50%;
+    font-weight: 700; line-height: 1;
+  }
+
+  .btn[aria-disabled="true"], .btn:disabled { opacity: .6; cursor: not-allowed; }
+
+  /* Hero: the main action is bright teal on navy so it stands out from the band */
+  .hero .btn--primary { background: var(--accent-on-dark); color: var(--navy-900); border-color: var(--accent-on-dark); }
+  .hero .btn--primary:hover { background: #FFFFFF; color: var(--navy-900); border-color: #FFFFFF; }
+
+  .icon-btn { padding: 0; font-size: 1.5rem; }
+
+  /* Menu toggle: exists only when JS has added html.js and the screen is narrow,
+     so the navigation stays fully usable without JavaScript. */
+  .nav-toggle { display: none; }
+  @media (max-width: 63.99rem) {
+    .js .nav-toggle { display: inline-flex; margin-inline-start: auto; }
+  }
+
+  /* ---- Accessibility toolbar: slim navy strip, ghost buttons, teal when ON ---- */
+  .a11y-bar__title {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    font-size: var(--fs-sm); font-weight: 700; color: var(--accent-on-dark);
+    margin-inline-end: var(--space-2);
+  }
+  .a11y-bar__title::before {
+    content: ""; inline-size: 0.6rem; block-size: 0.6rem; border-radius: 50%;
+    background: var(--accent-on-dark); box-shadow: 0 0 0 4px rgb(94 234 212 / .22);
+  }
+  .a11y-btn {
+    background: rgb(255 255 255 / .06); color: var(--bar-text); border-color: var(--bar-border);
+    border-radius: var(--radius-pill); padding-inline: 1.1em; font-size: var(--fs-sm);
+  }
+  .a11y-btn:hover { background: rgb(255 255 255 / .16); color: var(--bar-text); border-color: #FFFFFF; }
+  .a11y-btn--secondary { border-style: dashed; }
+  /* Limit reached (font size min/max): stays focusable, so keyboard focus is not lost.
+     Dimmed, with a dotted border so it is not distinguished by opacity alone. */
+  .a11y-btn[aria-disabled="true"] { opacity: .6; cursor: not-allowed; border-style: dotted; }
+  .a11y-output { min-inline-size: 4ch; white-space: nowrap; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Toggles: pressed state = filled + check mark (shape, not just color) */
+  .a11y-btn[aria-pressed="true"] { background: var(--bar-on-bg); color: var(--bar-on-text); border-color: var(--bar-on-bg); }
+  .a11y-btn[aria-pressed="true"]:hover { background: #FFFFFF; border-color: #FFFFFF; }
+  .chip { border-radius: var(--radius-pill); }
+  .chip[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .a11y-btn[aria-pressed="true"] .a11y-btn__text::before,
+  .chip[aria-pressed="true"]::before,
+  .icon-btn[aria-pressed="true"]::after {
+    content: "\2713";
+    content: "\2713" / "";
+    margin-inline-end: 0.4em;
+    font-weight: 700;
+  }
+  .icon-btn[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .icon-btn[aria-pressed="true"]::after { margin: 0; font-size: .75em; }
+
+  /* ---- Logo ---- */
+  .logo { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--heading); text-decoration: none; min-block-size: var(--tap); }
+  .logo:hover { color: var(--heading); }
+  .logo__mark { color: var(--accent-text); }
+  .logo__text { font-size: var(--fs-lg); font-weight: 700; letter-spacing: 0; }
+
+  /* ---- Navigation ---- */
+  .main-nav__link {
+    position: relative;
+    display: inline-flex; align-items: center;
+    min-block-size: var(--tap);
+    padding: 0.2em 1em;
+    color: var(--text);
+    font-weight: 700;
+    text-decoration: none;
+    border-radius: var(--radius-pill);
+    transition: background-color var(--motion-fast);
+    background: transparent; border: 0; font: inherit; font-weight: 700; cursor: pointer;   /* the tabs are <button>s */
+  }
+  .main-nav__link:hover { background: var(--tint); color: var(--heading); }
+  /* Current page: bold text plus an underline bar (a pseudo-element, not a
+     box-shadow, so it never fights with the focus indicator) */
+  .main-nav__link[aria-selected="true"] { color: var(--heading); }
+  .main-nav__link[aria-selected="true"]::after {
+    content: ""; position: absolute;
+    inset-inline: 1em; inset-block-end: 0.25rem;
+    block-size: 3px; background: var(--accent); border-radius: 2px;
+  }
+
+  .profile-menu { position: relative; }
+  .profile-btn { border-radius: var(--radius-pill); }
+  .profile-panel {
+    position: absolute;
+    inset-block-start: calc(100% + var(--space-2));
+    inset-inline-end: 0;
+    z-index: 50;
+    min-inline-size: 14rem;
+    padding: var(--space-2);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    box-shadow: var(--shadow-float);
+  }
+  .profile-panel__list a {
+    display: flex; align-items: center;
+    min-block-size: var(--tap);
+    padding-inline: var(--space-3);
+    color: var(--text); text-decoration: none; font-weight: 700;
+    border-radius: var(--radius-s);
+  }
+  .profile-panel__list a:hover { background: var(--tint); color: var(--heading); }
+
+  /* ---- Hero ---- */
+  /* Concentric rings echo the logo; purely decorative (generated content, no text) */
+  .hero::before, .hero::after {
+    content: ""; position: absolute; z-index: 0; pointer-events: none;
+    border-radius: 50%;
+    border: 2px solid rgb(94 234 212 / .22);
+    inset-inline-end: -8rem; inset-block-start: 50%;
+    transform: translateY(-50%);
+  }
+  .hero::before { inline-size: 26rem; block-size: 26rem; }
+  .hero::after  { inline-size: 40rem; block-size: 40rem; inset-inline-end: -15rem; border-color: rgb(94 234 212 / .12); }
+
+  .hero__eyebrow {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    padding: 0.2em 1em;
+    font-size: var(--fs-sm); font-weight: 700; color: var(--accent-on-dark);
+    border: 1px solid rgb(94 234 212 / .55); border-radius: var(--radius-pill);
+    background: rgb(94 234 212 / .08);
+  }
+  .hero__eyebrow::before { content: ""; inline-size: 0.55rem; block-size: 0.55rem; background: var(--accent-on-dark); border-radius: 50%; }
+  .hero__title { color: var(--hero-text); }
+  .hero__subtitle { font-size: var(--fs-md); color: var(--hero-muted); max-inline-size: 40rem; }
+  .hero__note { font-size: var(--fs-sm); color: var(--hero-muted); }
+  .hero a:not(.btn) { color: var(--hero-text); }
+  .hero__chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .hero__chips li {
+    padding: 0.15em 1em; font-size: var(--fs-sm); font-weight: 700;
+    color: var(--hero-text); border: 1px solid rgb(255 255 255 / .45); border-radius: var(--radius-pill);
+  }
+
+  /* ---- Section text ---- */
+  .section__title { position: relative; padding-block-start: var(--space-4); }
+  .section__title::before {
+    content: ""; position: absolute; inset-block-start: 0; inset-inline-start: 0;
+    inline-size: 3rem; block-size: 4px; background: var(--accent); border-radius: 2px;
+  }
+  .section__lead { color: var(--text-muted); font-size: var(--fs-md); }
+
+  /* ---- Cards (courses, jobs, tools, community) ---- */
+  .card {
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    box-shadow: var(--shadow-card);
+    min-inline-size: 0;
+    transition: box-shadow var(--motion-med), transform var(--motion-med), border-color var(--motion-med);
+  }
+  #opportunities .card { background: var(--bg); box-shadow: none; }
+  @media (hover: hover) {
+    .card:hover, .place:hover { box-shadow: var(--shadow-hover); border-color: var(--border-strong); transform: translateY(-2px); }
+  }
+  .card__icon {
+    display: inline-grid; place-items: center;
+    inline-size: 3.5rem; block-size: 3.5rem;
+    color: var(--accent-text);
+    background: var(--tint);
+    border-radius: var(--radius-m);
+  }
+  .card__title { font-size: var(--fs-md); line-height: var(--lh-tight); }
+  .card__kind { font-size: var(--fs-xs); font-weight: 700; color: var(--accent-text); }
+  .card__org { font-weight: 700; color: var(--text-muted); font-size: var(--fs-sm); }
+  .card__text { color: var(--text); flex: 1 1 auto; }   /* pushes actions to the card bottom */
+  .card__link {
+    margin-block-start: auto; display: inline-flex; align-items: center; gap: var(--space-2);
+    min-block-size: var(--tap); font-weight: 700; text-decoration: none;
+  }
+  .card__link::after { content: "\2190"; content: "\2190" / ""; transition: transform var(--motion-fast); }   /* arrow points forward in RTL */
+  .card__link:hover { text-decoration: underline; }
+  .card__link:hover::after { transform: translateX(-4px); }
+  .card > .btn { margin-block-start: auto; }
+
+  .tag {
+    display: inline-flex; align-items: center;
+    padding: 0.15em 0.8em;
+    font-size: var(--fs-xs); font-weight: 700;
+    color: var(--heading);
+    background: var(--tint);
+    border: 1px solid var(--tag-border);
+    border-radius: var(--radius-pill);
+  }
+
+  /* ---- Filters ---- */
+  .filter-form legend, .filter-form label:not(.check) { font-weight: 700; }
+  .form-hint { color: var(--text-muted); font-size: var(--fs-sm); }
+  .check {
+    display: inline-flex; align-items: center; gap: var(--space-3);
+    min-block-size: var(--tap); min-inline-size: var(--tap);
+    padding-inline-end: var(--space-2);
+    cursor: pointer; font-weight: 700;
+  }
+  .section__note { margin-block-end: var(--space-5); color: var(--text-muted); font-size: var(--fs-sm); font-weight: 700; }
+
+  /* ---- Views (js/router.js): one visible at a time; [hidden] does the hiding ---- */
+  .view { display: block; }
+  /* Opening a view fades it in; with reduced motion the swap is instant */
+  @media (prefers-reduced-motion: no-preference) {
+    .view-active { animation: view-in 220ms ease-out both; }
+  }
+  @keyframes view-in { from { opacity: 0; transform: translateY(0.5rem); } to { opacity: 1; transform: none; } }
+
+  /* ---- Mission (home) ---- */
+  .mission__list { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
+  .mission__item { display: grid; align-content: start; gap: var(--space-2); padding: var(--space-5); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-m); box-shadow: var(--shadow-card); }
+  .mission__title { font-size: var(--fs-md); color: var(--heading); }
+
+  /* ---- Settings view ---- */
+  .settings-grid { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); }
+  .settings-card { display: grid; gap: var(--space-3); align-content: start; min-inline-size: 0; margin: 0; padding: var(--space-5); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-m); box-shadow: var(--shadow-card); }
+  .settings-card legend { padding-inline: var(--space-2); font-size: var(--fs-md); font-weight: 700; color: var(--heading); }
+  .settings-card--wide, .settings-actions { grid-column: 1 / -1; }
+  .settings-sub { display: grid; gap: var(--space-3); justify-items: start; padding-block-start: var(--space-4); border-block-start: 1px solid var(--border); }
+  .settings-sub__title { font-weight: 700; }
+  .results-count { margin-block-end: var(--space-4); font-weight: 700; color: var(--text-muted); }
+  .empty-state { padding: var(--space-5); font-weight: 700; color: var(--text-muted); background: var(--surface); border: 2px dashed var(--border-strong); border-radius: var(--radius-m); }
+
+  /* ---- Directory ---- */
+  .place {
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    box-shadow: var(--shadow-card);
+    min-inline-size: 0;
+    transition: box-shadow var(--motion-med), transform var(--motion-med), border-color var(--motion-med);
+  }
+  /* A coloured edge repeats the status; the badge text and glyph remain the real signal */
+  .place { position: relative; overflow: hidden; --status-edge: var(--border-strong); }
+  .place::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; inline-size: 6px; background: var(--status-edge); }
+  .place-list__item[data-status="open"]    > .place { --status-edge: var(--ok-border); }
+  .place-list__item[data-status="partial"] > .place { --status-edge: var(--warn-border); }
+  .place-list__item[data-status="closed"]  > .place { --status-edge: var(--bad-border); }
+  .place__header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-2) var(--space-3); inline-size: 100%; }
+  .place__title { font-size: var(--fs-md); }
+  .place__meta { color: var(--text-muted); font-size: var(--fs-sm); font-weight: 700; }
+  .place > .btn { margin-block-start: auto; align-self: stretch; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    padding: 0.15em 0.8em;
+    font-size: var(--fs-xs); font-weight: 700; line-height: 1.5;
+    border: 2px solid;
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+  }
+  .badge::before { font-weight: 700; }
+  .badge--open    { background: var(--ok-bg);   color: var(--ok-text);   border-color: var(--ok-border); }
+  .badge--partial { background: var(--warn-bg); color: var(--warn-text); border-color: var(--warn-border); }
+  .badge--closed  { background: var(--bad-bg);  color: var(--bad-text);  border-color: var(--bad-border); }
+  .badge--open::before    { content: "\2713"; content: "\2713" / ""; }   /* check */
+  .badge--partial::before { content: "\25D0"; content: "\25D0" / ""; }   /* half circle */
+  .badge--closed::before  { content: "\2715"; content: "\2715" / ""; }   /* cross */
+  .badge--unknown { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+  .badge--unknown::before { content: "\2139"; content: "\2139" / ""; }      /* info */
+
+  /* ---- Catalog cards (js/catalog.js): facts, source and verification, actions ---- */
+  .place__text { color: var(--text); }
+  .card__facts { display: grid; gap: var(--space-1); padding-inline-start: var(--space-5); list-style: disc; color: var(--text); font-size: var(--fs-sm); }
+  .verify { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); justify-items: start; inline-size: 100%; min-inline-size: 0; padding-block-start: var(--space-3); border-block-start: 1px solid var(--border); }
+  .verify__source, .verify__note { min-inline-size: 0; max-inline-size: 100%; font-size: var(--fs-sm); color: var(--text-muted); }
+  .badge { max-inline-size: 100%; white-space: normal; }          /* long Arabic badge text wraps at 200% instead of overflowing */
+  .check { max-inline-size: 100%; }
+  .check > span { min-inline-size: 0; }
+  .verify__source a { font-weight: 700; }
+  .card__actions, .place__links { display: flex; flex-wrap: wrap; gap: var(--space-2); inline-size: 100%; margin-block-start: auto; }
+  .card__actions .btn, .place__links .btn { flex: 1 1 auto; }
+  .btn--maps { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); }
+  .btn__icon { flex: none; }
+
+  /* ---- Support band ---- */
+  .support__box {
+    position: relative; overflow: hidden; isolation: isolate;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+    gap: var(--space-2) var(--space-6);
+    padding: var(--space-7) var(--space-6);
+    background: var(--navy-900);
+    background-image: var(--hero-image);
+    color: var(--hero-text);
+    border: 1px solid rgb(255 255 255 / .08);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-card);
+  }
+  .support__box .section__title { color: var(--hero-text); }
+  .support__box .section__title::before { background: var(--accent-on-dark); }
+  .support__box .section__lead { color: var(--hero-muted); }
+  .support__box > * { min-inline-size: 0; grid-column: 1; }
+  .support__box > .btn { grid-column: 2; grid-row: 1 / span 2; }
+  .support__box .btn--primary { background: var(--accent-on-dark); color: var(--navy-900); border-color: var(--accent-on-dark); }
+  .support__box .btn--primary:hover { background: #FFFFFF; border-color: #FFFFFF; color: var(--navy-900); }
+
+  /* ---- Footer ---- */
+  .footer-title { font-size: var(--fs-md); color: var(--accent-on-dark); margin-block-end: var(--space-3); }
+  .site-footer a { color: var(--footer-link); display: inline-flex; align-items: center; min-block-size: var(--tap); min-inline-size: var(--tap); text-decoration-color: rgb(255 255 255 / .5); }
+  .site-footer a:hover { color: var(--footer-link); text-decoration-color: currentColor; }
+  .footer-address { display: flex; flex-direction: column; gap: var(--space-2); }
+  .a11y-badge {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    font-weight: 700; color: var(--footer-link);
+    border: 2px solid var(--accent-on-dark);
+    border-radius: var(--radius-pill);
+  }
+  .a11y-badge svg { color: var(--accent-on-dark); }
+  .footer-note { margin-block-start: var(--space-3); font-size: var(--fs-sm); }
+  .site-footer__copy {
+    margin-block-start: var(--space-6); padding-block-start: var(--space-4);
+    border-block-start: 1px solid rgb(255 255 255 / .18);
+    font-size: var(--fs-sm); max-inline-size: none;
+  }
+
+  /* ---- Modal dialog ---- */
+  .modal {
+    position: fixed; inset: 0; z-index: 900;
+    display: grid; place-items: center;
+    padding: max(var(--space-4), env(safe-area-inset-top, 0px)) max(var(--space-4), env(safe-area-inset-right, 0px))
+             max(var(--space-4), env(safe-area-inset-bottom, 0px)) max(var(--space-4), env(safe-area-inset-left, 0px));
+  }
+  .modal__backdrop { position: absolute; inset: 0; background: var(--overlay); }
+  .modal__dialog {
+    position: relative;
+    inline-size: min(38rem, 100%);
+    max-block-size: calc(100vh - 2rem);
+    max-block-size: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: var(--space-4);
+    padding: var(--space-5);
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    border-block-start: 6px solid var(--accent);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-float);
+  }
+  .modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); padding-block-end: var(--space-3); border-block-end: 1px solid var(--border); }
+  .modal__title { font-size: var(--fs-xl); }
+  .modal__close { border-radius: 50%; flex: none; }
+  .modal__desc { color: var(--text-muted); }
+  .modal__context { padding: var(--space-3) var(--space-4); font-weight: 700; background: var(--tint); color: var(--heading); border-radius: var(--radius-s); }
+  .modal__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-3); padding-block-start: var(--space-3); border-block-start: 1px solid var(--border); }
+  .modal__success { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+  .modal__success h3 { color: var(--ok-text); }
+
+  .booking-form { display: flex; flex-direction: column; gap: var(--space-4); }
+  .form-error { color: var(--danger-text); font-weight: 700; font-size: var(--fs-sm); }
+  .form-errors { padding: var(--space-4); background: var(--bad-bg); border: 3px solid var(--danger); border-radius: var(--radius-m); }
+  .form-errors__title { font-size: var(--fs-md); color: var(--bad-text); margin-block-end: var(--space-2); }
+  .form-errors ul { display: flex; flex-direction: column; gap: var(--space-1); padding-inline-start: 1.25rem; list-style: disc; color: var(--bad-text); }
+
+  html.is-modal-open, html.is-modal-open body { overflow: hidden; }
+
+  /* ---- Toast ----
+     The live region stays in the accessibility tree in both states, because screen
+     readers only announce text that changes inside a region that is already present.
+     "idle" therefore hides it visually (clip), never with display or visibility. */
+  .toast {
+    position: fixed;
+    inset-inline: 0;
+    inset-block-end: max(var(--space-4), env(safe-area-inset-bottom, 0px));
+    z-index: 1000;
+    margin-inline: auto;
+    inline-size: fit-content;
+    max-inline-size: min(34rem, calc(100% - 2rem));
+    display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--toast-bg);
+    color: var(--toast-text);
+    border-inline-start: 8px solid var(--accent-on-dark);
+    border-radius: var(--radius-m);
+    box-shadow: var(--shadow-float);
+    font-weight: 700;
+    transition: opacity var(--motion-med), transform var(--motion-med);
+  }
+  .toast__message { max-inline-size: none; }
+  .toast__dismiss { background: transparent; color: var(--toast-text); border-color: var(--toast-text); font-size: 1.5rem; padding: 0; border-radius: 50%; }
+  .toast__dismiss:hover { background: rgb(255 255 255 / .16); color: var(--toast-text); border-color: var(--toast-text); }
+  .toast[data-state="idle"] {
+    position: absolute;
+    inline-size: 1px; block-size: 1px;
+    margin: -1px; padding: 0; border: 0;
+    overflow: hidden; clip-path: inset(50%);
+    opacity: 0; box-shadow: none;
+  }
+  .toast[data-state="visible"] { opacity: 1; transform: none; }
+}
+
+
+/* ==========================================================================
+   5. RESPONSIVE
+   Three bands plus two refinements. Media queries use rem, so they follow the
+   browser's default text size (not the toolbar's --font-scale).
+
+     mobile    < 40rem      (under 640px)   one column, stacked actions, bottom-sheet dialog
+     tablet    40 – 63.99rem (640 – 1023px)  two columns
+     desktop   >= 64rem     (1024px+)       3 – 4 columns, inline navigation
+     wide      >= 90rem     (1440px+)       wider content column
+
+   Grids use auto-fill/auto-fit as the fluid default (layout layer); the rules
+   below pin the column counts at each band so cards never look stretched.
+   ========================================================================== */
+@layer responsive {
+
+  /* ---------- Mobile: < 40rem ---------- */
+  @media (max-width: 39.99rem) {
+    :root { --gutter: 1rem; }
+
+    .section { padding-block: var(--space-7); }
+    .hero    { padding-block: var(--space-8); }
+    .hero::before { inline-size: 16rem; block-size: 16rem; inset-inline-end: -8rem; }
+    .hero::after  { display: none; }
+
+    /* Toolbar: size controls on their own row, other tools in two even columns */
+    .a11y-bar__inner {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--target-gap);
+    }
+    .a11y-bar__inner { flex-basis: 100%; }
+    .a11y-group { grid-column: 1 / -1; justify-content: space-between; }
+    .a11y-btn   { inline-size: 100%; }
+    .a11y-group .a11y-btn { inline-size: auto; flex: 1 1 4rem; }   /* − 100% + share one row; they wrap only when text is enlarged a lot */
+
+    /* Hero actions: full-width, easy to hit with a thumb */
+    .hero__actions { flex-direction: column; align-items: stretch; inline-size: 100%; }
+    .hero__actions .btn { inline-size: 100%; }
+
+    /* One column everywhere */
+    .card-grid, .opp-grid, .place-list,
+    .filter-form, .site-footer__grid { grid-template-columns: minmax(0, 1fr); }
+    .filter-form { padding: var(--space-4); }
+
+    /* Card and listing actions span the card; form actions stack */
+    .card > .btn, .place > .btn { align-self: stretch; }
+    .form-actions .btn, .modal__actions .btn { flex: 1 1 100%; }
+
+    .support__box { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); padding: var(--space-6) var(--space-5); }
+    .support__box > .btn { grid-column: 1; grid-row: auto; inline-size: 100%; margin-block-start: var(--space-3); }
+
+    /* Dialog becomes a bottom sheet; safe-area padding keeps buttons off the home bar */
+    .modal { place-items: end stretch; padding: 0; }
+    .modal__dialog {
+      inline-size: 100%;
+      max-block-size: 92vh;
+      max-block-size: 92dvh;
+      padding: var(--space-5);
+      padding-block-end: max(var(--space-5), env(safe-area-inset-bottom, 0px));
+      border-radius: var(--radius-l) var(--radius-l) 0 0;
+      border-block-end-width: 0;
+    }
+
+    /* Toast spans the screen width */
+    .toast { inline-size: calc(100% - 2rem); max-inline-size: none; }
+  }
+
+  /* ---------- Tablet: 40rem – 63.99rem ---------- */
+  @media (min-width: 40rem) and (max-width: 63.99rem) {
+    .card-grid, .opp-grid, .place-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .filter-form, .site-footer__grid   { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hero { padding-block: var(--space-8); }
+  }
+
+  /* ---------- Desktop: >= 64rem ---------- */
+  @media (min-width: 64rem) {
+    .card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .opp-grid  { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .place-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .site-footer__grid { grid-template-columns: 1.1fr 1.3fr 1fr 1.2fr; }
+    .filter-form { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+
+    .a11y-bar__inner > .a11y-btn--secondary { margin-inline-start: auto; }
+    .hero { padding-block: calc(var(--space-8) + var(--space-3)); }
+    .modal__dialog { inline-size: min(40rem, 100%); padding: var(--space-6); }
+  }
+
+  /* ---------- Wide: >= 90rem ---------- */
+  @media (min-width: 90rem) {
+    :root { --content-max: 80rem; --gutter: 2.5rem; }
+  }
+
+  /* ---------- Short landscape screens (phones turned sideways) ---------- */
+  @media (max-height: 32rem) and (orientation: landscape) {
+    .hero { padding-block: var(--space-6); }
+    .modal { place-items: center; padding: var(--space-2); }
+    .modal__dialog {
+      max-block-size: calc(100vh - 1rem);
+      max-block-size: calc(100dvh - 1rem);
+      border-radius: var(--radius-m);
+      border-block-end-width: 1px;
+    }
+  }
+
+  /* ---------- Touch screens: roomier targets and spacing ---------- */
+  @media (pointer: coarse) {
+    :root { --target-gap: 1rem; }
+    input[type="checkbox"], input[type="radio"] { inline-size: 2rem; block-size: 2rem; }
+    .main-nav__list { gap: var(--space-2); }
+    .check { gap: var(--space-4); }
+  }
+}
+
+
+/* ==========================================================================
+   6. FOCUS
+   One indicator for every focusable element, in its own layer so it always
+   wins over component box-shadows. It is a 4px amber outline with a 2px
+   offset, wrapped in a slate edge on the inside gap and on the outside:
+
+        slate 2px | amber 4px | slate 2px
+
+   Amber vs slate is 6.8:1 and slate vs white is 14:1, so the ring stays
+   visible on light, blue and dark surfaces. It is never removed; only
+   containers that receive focus from script (tabindex="-1") hide it.
+   ========================================================================== */
+@layer focus {
+  :focus-visible {
+    outline: var(--focus-width) solid var(--focus-ring);
+    outline-offset: var(--focus-offset);
+    /* offset + ring + edge: one shadow fills the gap and the outer edge;
+       the outline paints on top of it, leaving slate showing at both sides */
+    box-shadow: 0 0 0 calc(var(--focus-offset) + var(--focus-width) + var(--focus-edge-w)) var(--focus-edge);
+  }
+
+  /* Script-focused containers (main after "skip to content", dialog title,
+     error summary, success message) take focus for screen readers, not as a stop */
+  [tabindex="-1"]:focus,
+  [tabindex="-1"]:focus-visible { outline: none; box-shadow: none; }
+
+  /* The label of a focused checkbox or radio is highlighted too, so the
+     whole 48px target reads as "current" */
+  .check:has(input:focus-visible) { background: var(--tint); border-radius: var(--radius-s); }
+
+  /* Skip link: ring is flush so it is not clipped at the screen edge */
+  .skip-link:focus-visible { outline-offset: -4px; box-shadow: none; }
+}
+
+
+/* ==========================================================================
+   7. THEMES
+   ========================================================================== */
+@layer themes {
+
+  /* ---------- Dark theme ----------
+     Same token names, new values, so no component needs a dark variant.
+     Two entry points that must stay identical:
+       1. the operating system asks for dark and the visitor has not chosen "light"
+       2. the visitor chose "dark" (html[data-theme="dark"], set by #btn-theme / boot.js)
+     :where() gives them zero specificity, so .high-contrast (below) always wins.
+
+     Measured contrast (WCAG 2.1):
+       text #E6EDF6 on page / card / raised panel       15.8 / 14.5 / 12.7
+       muted #A9B8CC on page / card / raised panel       9.2 / 8.5 / 7.4
+       link #5EEAD4 on card                              11.5
+       button text #071528 on #2DD4BF                    9.8
+       field borders #7C8FA8 on card / page              5.2 / 5.6
+       status text on its wash: open 10.5, partial 10.2, closed 8.6
+       danger #F87171 on card                            6.2
+       amber focus ring on card / page                   7.9 / 8.7   */
+  @media (prefers-color-scheme: dark) {
+    :where(:root:not([data-theme="light"])) {
+      color-scheme: dark;
+
+      --bg:            #0A1322;
+      --surface:       #111C30;
+      --surface-2:     #182742;
+      --text:          #E6EDF6;
+      --text-muted:    #A9B8CC;
+      --heading:       #F1F5FA;
+      --link:          #5EEAD4;
+      --link-hover:    #A7F3E6;
+
+      --primary:       #2DD4BF;
+      --primary-hover: #5EEAD4;
+      --on-primary:    #071528;
+
+      --accent:        #5EEAD4;
+      --on-accent:     #071528;
+      --accent-text:   #5EEAD4;
+      --accent-on-dark:#5EEAD4;
+
+      --tint:          #12302F;
+      --border:        #243349;
+      --border-strong: #7C8FA8;
+
+      --danger:        #F87171;
+      --on-danger:     #1A0505;
+      --danger-text:   #F87171;
+
+      --ok-bg:   #0F2E24; --ok-text:   #86EFC0; --ok-border:   #34D399;
+      --warn-bg: #33260A; --warn-text: #FCD34D; --warn-border: #F59E0B;
+      --bad-bg:  #3A1414; --bad-text:  #FCA5A5; --bad-border:  #F87171;
+
+      --bar-bg:        #050B16;
+      --footer-bg:     #050B16;
+      --overlay:       rgb(0 0 0 / .72);
+      --toast-bg:      #223350;
+
+      --focus-edge:    #050B16;
+
+      --shadow-card:   0 1px 2px rgb(0 0 0 / .5), 0 6px 20px rgb(0 0 0 / .35);
+      --shadow-hover:  0 2px 4px rgb(0 0 0 / .5), 0 14px 32px rgb(0 0 0 / .5);
+      --shadow-float:  0 14px 44px rgb(0 0 0 / .65);
+
+      --selection-bg:   #5EEAD4;
+      --selection-text: #071528;
+      --tag-border:     #2F5A57;
+      --tile-filter:    invert(1) hue-rotate(180deg) brightness(.92) contrast(.9);
+    }
+  }
+  :where(:root[data-theme="dark"]) {
+    color-scheme: dark;
+
+    --bg:            #0A1322;
+    --surface:       #111C30;
+    --surface-2:     #182742;
+    --text:          #E6EDF6;
+    --text-muted:    #A9B8CC;
+    --heading:       #F1F5FA;
+    --link:          #5EEAD4;
+    --link-hover:    #A7F3E6;
+
+    --primary:       #2DD4BF;
+    --primary-hover: #5EEAD4;
+    --on-primary:    #071528;
+
+    --accent:        #5EEAD4;
+    --on-accent:     #071528;
+    --accent-text:   #5EEAD4;
+    --accent-on-dark:#5EEAD4;
+
+    --tint:          #12302F;
+    --border:        #243349;
+    --border-strong: #7C8FA8;
+
+    --danger:        #F87171;
+    --on-danger:     #1A0505;
+    --danger-text:   #F87171;
+
+    --ok-bg:   #0F2E24; --ok-text:   #86EFC0; --ok-border:   #34D399;
+    --warn-bg: #33260A; --warn-text: #FCD34D; --warn-border: #F59E0B;
+    --bad-bg:  #3A1414; --bad-text:  #FCA5A5; --bad-border:  #F87171;
+
+    --bar-bg:        #050B16;
+    --footer-bg:     #050B16;
+    --overlay:       rgb(0 0 0 / .72);
+    --toast-bg:      #223350;
+
+    --focus-edge:    #050B16;
+
+    --shadow-card:   0 1px 2px rgb(0 0 0 / .5), 0 6px 20px rgb(0 0 0 / .35);
+    --shadow-hover:  0 2px 4px rgb(0 0 0 / .5), 0 14px 32px rgb(0 0 0 / .5);
+    --shadow-float:  0 14px 44px rgb(0 0 0 / .65);
+
+    --selection-bg:   #5EEAD4;
+    --selection-text: #071528;
+    --tag-border:     #2F5A57;
+    --tile-filter:    invert(1) hue-rotate(180deg) brightness(.92) contrast(.9);
+  }
+
+
+  /* ---------- High contrast ----------
+     Pure black, neon yellow text (19.6:1), cyan borders (16.7:1).
+     Works as html.high-contrast or body.high-contrast: it only re-points tokens,
+     and a few hard-coded component details are overridden below. */
+  .high-contrast {
+    color-scheme: dark;
+
+    --bg: #000000;
+    --surface: #000000;
+    --text: #FFFF00;
+    --text-muted: #FFFF00;
+    --heading: #FFFF00;
+    --link: #FFFF00;
+    --link-hover: #FFFFFF;
+
+    --primary: #FFFF00;
+    --primary-hover: #FFFFFF;
+    --on-primary: #000000;
+
+    --accent: #00FFFF;
+    --on-accent: #000000;
+    --accent-text: #00FFFF;
+
+    --tint: #1A1A00;
+    --border: #00FFFF;
+    --border-strong: #00FFFF;
+
+    --danger: #FF6B6B;
+    --on-danger: #000000;
+    --danger-text: #FF9A9A;
+
+    --ok-bg: #000000;   --ok-text: #FFFF00;   --ok-border: #00FFFF;
+    --warn-bg: #000000; --warn-text: #FFFF00; --warn-border: #00FFFF;
+    --bad-bg: #000000;  --bad-text: #FFFF00;  --bad-border: #00FFFF;
+
+    --hero-bg: #000000;
+    --hero-text: #FFFF00;
+    --hero-muted: #FFFF00;
+    --bar-bg: #000000;
+    --bar-text: #FFFF00;
+    --bar-border: #00FFFF;
+    --bar-on-bg: #FFFF00;
+    --bar-on-text: #000000;
+    --footer-bg: #000000;
+    --footer-text: #FFFF00;
+    --footer-link: #FFFF00;
+    --overlay: rgb(0 0 0 / .88);
+    --toast-bg: #000000;
+    --toast-text: #FFFF00;
+    --accent-on-dark: #00FFFF;
+    --selection-bg: #FFFF00;
+    --selection-text: #000000;
+    --tag-border: #00FFFF;
+    --tile-filter: none;
+    --surface-2: #000000;
+    --hero-image: none;          /* no gradients: flat black and yellow */
+    --shadow-hover: none;
+
+    --focus-ring: #FFFFFF;     /* white ring with black edges on a black page */
+    --focus-edge: #000000;
+    --focus-offset: 3px;
+    --focus-edge-w: 3px;
+
+    --shadow-card: none;
+    --shadow-float: none;
+  }
+
+  .high-contrast a { text-decoration-line: underline; }
+  .high-contrast .btn, .high-contrast .main-nav__link,
+  .high-contrast .profile-panel__list a, .high-contrast .logo { text-decoration: none; }
+
+  .high-contrast .btn--secondary { color: var(--text); }
+  .high-contrast .btn:hover, .high-contrast .chip:hover, .high-contrast .nav-toggle:hover,
+  .high-contrast .profile-btn:hover, .high-contrast .icon-btn:hover,
+  .high-contrast .main-nav__link:hover { background: #FFFF00; color: #000000; }
+  .high-contrast .btn--primary:hover { background: #FFFFFF; color: #000000; }
+
+  .high-contrast .hero { border-block-end: 3px solid #00FFFF; }
+  .high-contrast .hero::before, .high-contrast .hero::after { display: none; }
+  .high-contrast .skip-link { background: #FFFF00; color: #000000; }
+  .high-contrast .support__box { background: #000000; color: #FFFF00; }
+  .high-contrast .support__box .btn--primary { background: #00FFFF; color: #000000; border-color: #00FFFF; }
+  .high-contrast .site-header, .high-contrast .top-chrome { box-shadow: none; }
+  .high-contrast .a11y-bar { border-block-end: 3px solid #00FFFF; }
+  .high-contrast .hero__eyebrow, .high-contrast .hero__chips li { border-color: #00FFFF; background: none; }
+  .high-contrast .hero .btn--primary { background: #00FFFF; color: #000000; border-color: #00FFFF; }
+  .high-contrast .hero .btn--primary:hover { background: #FFFFFF; filter: none; }
+  .high-contrast .btn--sos { border-color: #FFFFFF; }
+  .high-contrast .btn--sos:hover { filter: none; background: #FFFFFF; color: #000000; }
+
+  .high-contrast .card, .high-contrast .place, .high-contrast .filter-form,
+  .high-contrast .support__box, .high-contrast .profile-panel,
+  .high-contrast .empty-state { border: 2px solid #00FFFF; }
+  .high-contrast .modal__dialog { border: 4px solid #00FFFF; }
+  .high-contrast .site-header, .high-contrast .site-footer, .high-contrast .section { border-color: #00FFFF; }
+  .high-contrast .site-footer { border-block-start: 3px solid #00FFFF; }
+  .high-contrast .tag { background: #000000; }
+  .high-contrast .card__icon { background: #000000; border: 2px solid #00FFFF; }
+  .high-contrast .a11y-badge, .high-contrast .a11y-badge svg { border-color: #00FFFF; color: #FFFF00; }
+  .high-contrast .main-nav__link[aria-selected="true"]::after { background: #00FFFF; }
+  .high-contrast .toast { border: 3px solid #00FFFF; border-inline-start-width: 10px; }
+  .high-contrast .toast[data-state="idle"] { border: 0; }
+  .high-contrast ::selection { background: #FFFF00; color: #000000; }
+  .high-contrast input[type="checkbox"], .high-contrast input[type="radio"] { accent-color: #FFFF00; }
+
+  /* ---------- Dyslexia-friendly typography ----------
+     Class goes on <body> (or <html>), set by the #btn-dyslexia toggle. Based on the
+     usual guidance: a plain sans-serif face, more space between letters, words and
+     lines, short lines, left/start alignment, no italics and no hyphenation.
+     Letter-spacing is removed for Arabic, because it breaks the joining of letters;
+     Arabic gets extra word and line spacing instead. */
+  .dyslexic-font {
+    --font-body: var(--font-dyslexic);
+    --lh-body: 1.9;
+    --ls-body: 0.05em;
+    --ws-body: 0.2em;
+    --measure: 58ch;
+  }
+  .dyslexic-font:lang(ar), .dyslexic-font :lang(ar) { letter-spacing: 0; }
+  .dyslexic-font:lang(ar) { --ls-body: 0; --ws-body: 0.24em; }
+  /* A Latin phrase inside an Arabic page still gets letter spacing */
+  .dyslexic-font [lang|="en"] { letter-spacing: 0.05em; }
+
+  .dyslexic-font p, .dyslexic-font li, .dyslexic-font dd { text-align: start; text-justify: none; hyphens: none; }
+  .dyslexic-font em, .dyslexic-font i, .dyslexic-font cite, .dyslexic-font dfn { font-style: normal; font-weight: 700; }
+  .dyslexic-font h1, .dyslexic-font h2, .dyslexic-font h3 { line-height: 1.4; }
+  /* Controls keep the larger spacing but not the extra line height, so they stay compact */
+  .dyslexic-font .btn, .dyslexic-font .a11y-btn, .dyslexic-font .chip, .dyslexic-font .tag, .dyslexic-font .badge { line-height: 1.4; }
+
+  /* ---------- OS-level preferences ---------- */
+  @media (prefers-contrast: more) {
+    :root { --border: #64748B; --text-muted: var(--text); }
+  }
+
+  @media (forced-colors: active) {
+    .btn, .a11y-btn, .chip, .icon-btn, .nav-toggle, .profile-btn, .card, .place,
+    .badge, .tag, .toast, .modal__dialog { border: 2px solid ButtonText; }
+    .a11y-btn[aria-pressed="true"], .chip[aria-pressed="true"], .icon-btn[aria-pressed="true"] {
+      background: Highlight; color: HighlightText; border-color: Highlight;
+    }
+    :focus-visible { outline: 4px solid Highlight; box-shadow: none; }
+    .hero__eyebrow::before { background: CanvasText; }
+  }
+}
+
+
+/* ==========================================================================
+   8. UTILITIES  (last layer, so they always win)
+   ========================================================================== */
+@layer utilities {
+  .visually-hidden {
+    position: absolute !important;
+    inline-size: 1px; block-size: 1px;
+    margin: -1px; padding: 0; border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  [hidden] { display: none !important; }
+}

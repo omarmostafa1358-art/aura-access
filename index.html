@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <!-- Tiny, blocking on purpose: applies a saved dark/light choice before the first paint (no flash) -->
+  <script src="js/boot.js"></script>
+  <title>آورا أكسس | منصة لأصحاب الهمم</title>
+  <meta name="description" content="آورا أكسس: دورات ووظائف وأدوات مساعدة ودعم مجتمعي وأماكن مهيأة لأصحاب الهمم.">
+  <!-- IBM Plex Sans Arabic: the page typeface. Lexend: the dyslexia-mode typeface for Latin text. If either fails to load, system fonts take over. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Lexend:wght@400;700&display=swap">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/places.css">
+  <link rel="stylesheet" href="css/app-shell.css">
+  <script src="js/data.js" defer></script>
+  <script src="js/catalog.js" defer></script>
+  <script src="js/app.js" defer></script>
+  <script src="js/placemap.js" defer></script>
+</head>
+<body>
+
+  <a class="skip-link" href="#main-content">انتقل إلى المحتوى الرئيسي</a>
+
+  <!-- ===== إشعار Toast: منطقة حيّة موجودة في الصفحة منذ التحميل وتبقى فارغة حتى يكتب فيها السكربت ===== -->
+  <div id="toast" class="toast" data-toast data-state="idle">
+    <p id="toast-message" class="toast__message" role="status" aria-live="polite" aria-atomic="true"></p>
+    <button type="button" id="toast-dismiss" class="toast__dismiss" aria-label="إغلاق الإشعار" hidden>
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+
+  <!-- إعلانات قارئ الشاشة فقط (نتائج التصفية وغيرها): موجودة منذ التحميل وفارغة حتى يكتب فيها السكربت -->
+  <div id="sr-live" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- يعلن تغيير القسم (js/router.js): موجودة منذ التحميل وفارغة حتى يكتب فيها السكربت -->
+  <p id="view-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+
+  <!-- للتنبيهات العاجلة فقط، مثل أخطاء الإرسال -->
+  <div id="alert-live" class="visually-hidden" role="alert" aria-live="assertive" aria-atomic="true"></div>
+
+  <div id="page-wrapper">
+
+    <!-- الشريط العلوي الثابت: أدوات الوصول ثم الترويسة والتبويبات. يبقى ظاهرًا في كل الواجهات. -->
+    <div class="top-chrome" id="top-chrome">
+
+  <section class="a11y-bar" id="a11y-bar" aria-labelledby="a11y-bar-title">
+    <p id="a11y-bar-title" class="a11y-bar__title">أدوات سهولة الوصول</p>
+    <!-- على الشاشات الأصغر من 64rem تُطوى الأدوات خلف هذا الزر (js/shell.js). بدون جافاسكربت تبقى ظاهرة. -->
+    <button type="button" id="a11y-toggle" class="a11y-toggle" aria-expanded="false" aria-controls="a11y-tools">
+      <svg class="a11y-toggle__icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm8 6.5-5.5.5v3.2l1.9 7.3-1.9.5-1.9-5.6h-1.2l-1.9 5.6-1.9-.5 1.9-7.3V9L4 8.5V6.6l8 .9 8-.9v1.9Z" fill="currentColor"/></svg>
+      <span class="a11y-toggle__text">أدوات سهولة الوصول</span>
+      <svg class="a11y-toggle__chev" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div id="a11y-tools" class="a11y-bar__inner" role="toolbar" aria-label="أدوات سهولة الوصول" aria-controls="page-wrapper">
+
+      <div class="a11y-group" role="group" aria-label="حجم الخط">
+        <button type="button" id="btn-font-dec" class="a11y-btn" aria-label="تصغير الخط">
+          <span aria-hidden="true">أ−</span>
+        </button>
+        <output id="font-size-output" class="a11y-output" for="btn-font-dec btn-font-inc">100%</output>
+        <button type="button" id="btn-font-inc" class="a11y-btn" aria-label="تكبير الخط">
+          <span aria-hidden="true">أ+</span>
+        </button>
+      </div>
+
+      <button type="button" id="btn-contrast" class="a11y-btn" aria-pressed="false">
+        <span class="a11y-btn__text">التباين العالي</span>
+      </button>
+
+      <button type="button" id="btn-speech" class="a11y-btn" aria-pressed="false" aria-describedby="speech-help">
+        <span class="a11y-btn__text">القراءة بصوت عالٍ</span>
+      </button>
+      <span id="speech-help" class="visually-hidden">يقرأ نص الصفحة أو النص المحدد باستخدام صوت المتصفح.</span>
+
+      <button type="button" id="btn-dyslexia" class="a11y-btn" aria-pressed="false">
+        <span class="a11y-btn__text">خط عسر القراءة</span>
+      </button>
+
+      <button type="button" id="btn-theme" class="a11y-btn" aria-pressed="false">
+        <span class="a11y-btn__text">الوضع الداكن</span>
+      </button>
+
+      <button type="button" id="btn-reset" class="a11y-btn a11y-btn--secondary">
+        <span class="a11y-btn__text">إعادة الضبط</span>
+      </button>
+
+    </div>
+  </section>
+
+    <header class="site-header" role="banner">
+      <div class="site-header__inner">
+
+        <a class="logo" href="#/home" data-route="home" aria-label="آورا أكسس، الصفحة الرئيسية">
+          <svg class="logo__mark" width="40" height="40" viewBox="0 0 40 40" role="img" aria-hidden="true" focusable="false">
+            <circle cx="20" cy="20" r="5" fill="currentColor"/>
+            <circle cx="20" cy="20" r="11" fill="none" stroke="currentColor" stroke-width="2.5"/>
+            <circle cx="20" cy="20" r="17" fill="none" stroke="currentColor" stroke-width="2.5"/>
+          </svg>
+          <span class="logo__text">آورا أكسس</span>
+        </a>
+
+        <button type="button" id="nav-toggle" class="nav-toggle" aria-expanded="false" aria-controls="main-nav">
+          <span class="nav-toggle__text">القائمة</span>
+        </button>
+
+        <nav id="main-nav" class="main-nav" aria-label="أقسام المنصة">
+          <!-- تبويبات: يتحكم بها js/router.js. الأسهم تنقل التركيز بين التبويبات، وEnter أو Space يفتح التبويب. -->
+          <div class="main-nav__list" role="tablist" aria-label="أقسام المنصة" data-tabs>
+            <button type="button" role="tab" id="tab-home" class="main-nav__link" data-view="home" aria-selected="true" aria-controls="view-home"><svg class="tab-icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 2 12h3v8h6v-6h2v6h6v-8h3L12 3Z" fill="currentColor"/></svg><span class="tab-label">الرئيسية</span></button>
+            <button type="button" role="tab" id="tab-opportunities" class="main-nav__link" data-view="opportunities" aria-selected="false" aria-controls="view-opportunities" tabindex="-1"><svg class="tab-icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 6h-4V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Zm-10-2h4v2h-4V4Z" fill="currentColor"/></svg><span class="tab-label">الخدمات والفرص</span></button>
+            <button type="button" role="tab" id="tab-places" class="main-nav__link" data-view="places" aria-selected="false" aria-controls="view-places" tabindex="-1"><svg class="tab-icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" fill="currentColor"/></svg><span class="tab-label">الأماكن والخرائط</span></button>
+            <button type="button" role="tab" id="tab-settings" class="main-nav__link" data-view="settings" aria-selected="false" aria-controls="view-settings" tabindex="-1"><svg class="tab-icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19.14 12.94a7.07 7.07 0 0 0 .06-.94 7.07 7.07 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54a7.03 7.03 0 0 0-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0-.06.94c0 .32.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.31.61.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54a7.03 7.03 0 0 0 1.62-.94l2.39.96c.22.09.48 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z" fill="currentColor"/></svg><span class="tab-label">الإعدادات</span></button>
+          </div>
+        </nav>
+
+        <div class="header-actions">
+          <button type="button" id="btn-voice-search" class="icon-btn" aria-pressed="false" aria-label="البحث الصوتي" aria-describedby="voice-help">
+            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93V22h2v-3.07A7 7 0 0 0 19 12h-2Z" fill="currentColor"/>
+            </svg>
+          </button>
+          <span id="voice-help" class="visually-hidden">اضغط وتحدث لتبحث عن خدمة أو مكان.</span>
+
+          <div class="profile-menu">
+            <button type="button" id="profile-toggle" class="profile-btn" aria-expanded="false" aria-controls="profile-panel">
+              <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.24-8 5v3h16v-3c0-2.76-3.58-5-8-5Z" fill="currentColor"/>
+              </svg>
+              <span class="profile-btn__text">حسابي</span>
+            </button>
+            <div id="profile-panel" class="profile-panel" hidden>
+              <ul class="profile-panel__list">
+                <li><a href="/account/profile">ملفي الشخصي</a></li>
+                <li><a href="#/settings" data-route="settings">تفضيلات الوصول</a></li>
+                <li><a href="/account/bookings">حجوزاتي</a></li>
+                <li><a href="/logout">تسجيل الخروج</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </header>
+
+    </div>
+
+    <!-- ===== المحتوى الرئيسي: أربع واجهات، واحدة ظاهرة في كل مرة (js/router.js) ===== -->
+    <main id="main-content" class="site-main" tabindex="-1">
+
+      <!-- ===== الواجهة 1: الرئيسية ===== -->
+      <section id="view-home" class="view view-active" role="tabpanel" aria-labelledby="tab-home" data-view-title="الرئيسية">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero__content">
+          <p class="hero__eyebrow">لأصحاب الهمم</p>
+          <h1 id="hero-title" class="hero__title" tabindex="-1">تعلّم واعمل وتنقّل بالطريقة التي تناسبك</h1>
+          <p class="hero__subtitle">
+            منصة واحدة تجمع دورات ووظائف عن بُعد وأدوات مساعدة وأماكن مهيأة ودعمًا مجتمعيًا،
+            ويمكنك ضبط عرضها بما يناسب طريقتك في الرؤية والسمع والحركة.
+          </p>
+          <ul class="hero__chips" role="list" aria-label="احتياجات الوصول المدعومة">
+            <li>بصري</li>
+            <li>سمعي</li>
+            <li>حركي</li>
+            <li>ذهني وتوحد</li>
+          </ul>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="#/opportunities" data-route="opportunities">استكشف المنصة</a>
+            <a class="btn btn--sos" href="tel:122" aria-describedby="sos-help">
+              <span class="btn__icon" aria-hidden="true">!</span>
+              <span>مساعدة طارئة SOS</span>
+            </a>
+          </div>
+          <p id="sos-help" class="hero__note">في حالة الخطر الفوري اتصل برقم الطوارئ. زر المساعدة يفتح مكالمة هاتفية.</p>
+        </div>
+      </section>
+
+      <section id="mission" class="section mission" aria-labelledby="mission-title">
+        <header class="section__header">
+          <h2 id="mission-title" class="section__title">رسالتنا</h2>
+          <p class="section__lead">أن يجد كل شخص من أصحاب الهمم في مصر الدورة أو الأداة أو المكان المناسب في مكان واحد، وأن يعرف ما الذي تم التحقق منه وما الذي يحتاج إلى اتصال بالجهة.</p>
+        </header>
+        <ul class="mission__list" role="list">
+          <li class="mission__item"><h3 class="mission__title">التحقق قبل النشر</h3><p>لكل بطاقة مصدرها وتاريخ مراجعتها، ونكتب بوضوح ما لم نستطع تأكيده.</p></li>
+          <li class="mission__item"><h3 class="mission__title">تصميم يتكيف معك</h3><p>حجم الخط والتباين وخط عسر القراءة والقراءة بصوت عالٍ في أي وقت من قسم الإعدادات.</p></li>
+          <li class="mission__item"><h3 class="mission__title">خصوصيتك أولًا</h3><p>تُحفظ تفضيلاتك في متصفحك فقط، ولا يرسل نموذج الطلب الحالي أي بيانات.</p></li>
+        </ul>
+      </section>
+
+      <section id="highlights" class="section services" aria-labelledby="highlights-title">
+        <header class="section__header">
+          <h2 id="highlights-title" class="section__title">ماذا تجد في المنصة</h2>
+          <p class="section__lead">اختر المجال الذي يهمك وسننقلك إلى القسم المناسب.</p>
+        </header>
+
+        <ul class="card-grid" role="list">
+
+          <li class="card-grid__item">
+            <article class="card" aria-labelledby="card-courses-title">
+              <span class="card__icon" aria-hidden="true">
+                <svg width="32" height="32" viewBox="0 0 24 24" focusable="false"><path d="M12 3 1 9l11 6 9-4.91V17h2V9L12 3Zm-6 9.18v4L12 19l6-2.82v-4L12 15l-6-2.82Z" fill="currentColor"/></svg>
+              </span>
+              <h3 id="card-courses-title" class="card__title">دورات متاحة للجميع</h3>
+              <p class="card__text">برامج تدريب مهني وتقني من جهات مصرية، مع مصدر كل برنامج وطريقة التسجيل.</p>
+              <ul class="tag-list" aria-label="وسائل الوصول المتوفرة">
+                <li class="tag">ترجمة نصية</li>
+                <li class="tag">قارئ شاشة</li>
+                <li class="tag">لغة الإشارة</li>
+              </ul>
+              <a class="card__link" href="#/opportunities" data-route="opportunities" data-preset="category:course">تصفّح الدورات<span class="visually-hidden"> المتاحة للجميع</span></a>
+            </article>
+          </li>
+
+          <li class="card-grid__item">
+            <article class="card" aria-labelledby="card-jobs-title">
+              <span class="card__icon" aria-hidden="true">
+                <svg width="32" height="32" viewBox="0 0 24 24" focusable="false"><path d="M20 6h-4V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2ZM10 4h4v2h-4V4Z" fill="currentColor"/></svg>
+              </span>
+              <h3 id="card-jobs-title" class="card__title">وظائف عن بُعد</h3>
+              <p class="card__text">نضيف الوظائف بعد التحقق من مصدرها، لذلك قد يكون القسم فارغًا الآن.</p>
+              <ul class="tag-list" aria-label="وسائل الوصول المتوفرة">
+                <li class="tag">عن بُعد</li>
+                <li class="tag">بعد التحقق</li>
+              </ul>
+              <a class="card__link" href="#/opportunities" data-route="opportunities" data-preset="category:job">استعرض الوظائف<span class="visually-hidden"> عن بُعد</span></a>
+            </article>
+          </li>
+
+          <li class="card-grid__item">
+            <article class="card" aria-labelledby="card-tools-title">
+              <span class="card__icon" aria-hidden="true">
+                <svg width="32" height="32" viewBox="0 0 24 24" focusable="false"><path d="m22.7 19-9.1-9.1a5 5 0 0 0-1.2-5.2 5 5 0 0 0-5.1-1.2l3 3-2.1 2.1-3-3a5 5 0 0 0 1.2 5.1 5 5 0 0 0 5.2 1.2l9.1 9.1a1 1 0 0 0 1.4 0l.6-.6a1 1 0 0 0 0-1.4Z" fill="currentColor"/></svg>
+              </span>
+              <h3 id="card-tools-title" class="card__title">أدوات مساعدة</h3>
+              <p class="card__text">أدوات وتطبيقات وأجهزة تعويضية من جهات مصرية، مع مصدر كل أداة وطريقة طلبها.</p>
+              <ul class="tag-list" aria-label="وسائل الوصول المتوفرة">
+                <li class="tag">بصري</li>
+                <li class="tag">سمعي</li>
+                <li class="tag">حركي</li>
+              </ul>
+              <a class="card__link" href="#/opportunities" data-route="opportunities" data-preset="category:tool">اكتشف الأدوات<span class="visually-hidden"> المساعدة</span></a>
+            </article>
+          </li>
+
+          <li class="card-grid__item">
+            <article class="card" aria-labelledby="card-community-title">
+              <span class="card__icon" aria-hidden="true">
+                <svg width="32" height="32" viewBox="0 0 24 24" focusable="false"><path d="M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05A4.2 4.2 0 0 1 17 16.5V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z" fill="currentColor"/></svg>
+              </span>
+              <h3 id="card-community-title" class="card__title">الدعم المجتمعي</h3>
+              <p class="card__text">مجموعات دعم ومتطوعون ومنسّقون يساعدونك في التسجيل والتنقل والتواصل.</p>
+              <ul class="tag-list" aria-label="وسائل الوصول المتوفرة">
+                <li class="tag">مرافقة</li>
+                <li class="tag">استشارات</li>
+                <li class="tag">لقاءات</li>
+              </ul>
+              <a class="card__link" href="#support-title" data-scroll="support-title">احصل على الدعم<span class="visually-hidden"> المجتمعي</span></a>
+            </article>
+          </li>
+
+        </ul>
+      </section>
+
+      <section id="support" class="section support" aria-labelledby="support-title">
+        <div class="support__box">
+          <h2 id="support-title" class="section__title">تحتاج إلى مساعدة؟</h2>
+          <p class="section__lead">احجز جلسة قصيرة مع منسّق دعم يساعدك في اختيار الخدمة المناسبة.</p>
+          <button type="button" class="btn btn--primary" data-open-modal="booking-modal" data-context="">احجز جلسة دعم</button>
+        </div>
+      </section>
+      </section>
+
+      <!-- ===== الواجهة 2: الخدمات والفرص ===== -->
+      <section id="view-opportunities" class="view" role="tabpanel" aria-labelledby="tab-opportunities" data-view-title="الخدمات والفرص" hidden>
+      <section id="opportunities" class="section opportunities" aria-labelledby="opp-title"
+               data-filter-scope="opportunities">
+        <header class="section__header">
+          <h1 id="opp-title" class="section__title" tabindex="-1">الخدمات والفرص</h1>
+          <p class="section__lead">دورات وأدوات مساعدة من جهات مصرية، لكل بطاقة مصدرها وتاريخ مراجعتها. صفِّ حسب النوع أو المدينة أو فئة الإعاقة.</p>
+        </header>
+        <p class="section__note">لا تعرض المنصة وظيفة إلا بعد التحقق من مصدرها، لذلك قسم الوظائف فارغ حاليًا. برنامج داندليون في قسم الدورات يتضمن مسارًا للتوظيف.</p>
+
+        <form id="opp-filter" class="filter-form" aria-labelledby="opp-filter-title" novalidate
+              data-filter-form="opportunities" data-filter-list="opp-list" data-filter-count="opp-count" data-filter-empty="opp-empty">
+          <h3 id="opp-filter-title" class="visually-hidden">تصفية الفرص</h3>
+
+          <fieldset class="form-field">
+            <legend>النوع</legend>
+            <div class="chip-row">
+              <button type="button" class="chip" data-filter-group="category" data-filter-value="all" aria-pressed="true">الكل</button>
+              <button type="button" class="chip" data-filter-group="category" data-filter-value="course" aria-pressed="false">دورات</button>
+              <button type="button" class="chip" data-filter-group="category" data-filter-value="job" aria-pressed="false">وظائف</button>
+              <button type="button" class="chip" data-filter-group="category" data-filter-value="tool" aria-pressed="false">أدوات</button>
+            </div>
+          </fieldset>
+
+                    <fieldset class="form-field">
+            <legend>المدينة</legend>
+            <div class="chip-row">
+              <button type="button" class="chip" data-filter-group="city" data-filter-value="all" aria-pressed="true">كل المدن</button>
+              <button type="button" class="chip" data-filter-group="city" data-filter-value="cairo" aria-pressed="false">القاهرة</button>
+              <button type="button" class="chip" data-filter-group="city" data-filter-value="giza" aria-pressed="false">الجيزة</button>
+              <button type="button" class="chip" data-filter-group="city" data-filter-value="alexandria" aria-pressed="false">الإسكندرية</button>
+            </div>
+            <p class="form-hint">البطاقات التي لا يحدد مصدرها مدينة (عبر الإنترنت أو على مستوى الجمهورية) تظهر تحت كل مدينة.</p>
+          </fieldset>
+
+<fieldset class="form-field">
+            <legend>فئة الإعاقة</legend>
+            <div class="check-row">
+              <label class="check"><input type="checkbox" name="opp-need" value="visual" data-filter-group="access"> <span>بصرية</span></label>
+              <label class="check"><input type="checkbox" name="opp-need" value="hearing" data-filter-group="access"> <span>سمعية</span></label>
+              <label class="check"><input type="checkbox" name="opp-need" value="mobility" data-filter-group="access"> <span>حركية</span></label>
+              <label class="check"><input type="checkbox" name="opp-need" value="cognitive" data-filter-group="access"> <span>ذهنية وتوحد</span></label>
+            </div>
+          </fieldset>
+
+          <div class="form-field">
+            <label for="opp-search">بحث بكلمة</label>
+            <input type="search" id="opp-search" name="q" autocomplete="off" data-filter-group="keyword" aria-describedby="opp-search-hint">
+            <p id="opp-search-hint" class="form-hint">مثال: ترجمة نصية، عن بُعد، قارئ شاشة.</p>
+          </div>
+
+          <div class="form-actions">
+            <button type="reset" class="btn btn--secondary" data-filter-reset>مسح التصفية</button>
+          </div>
+        </form>
+
+        <p id="opp-count" class="results-count">يعرض 9 فرص</p>
+
+        <ul id="opp-list" class="opp-grid" role="list" aria-describedby="opp-count">
+          <!-- تُملأ من js/data.js عبر js/catalog.js -->
+        </ul>
+        <noscript><p class="empty-state">تحتاج هذه القائمة إلى تفعيل جافاسكربت لعرض الدورات والأدوات.</p></noscript>
+
+        <p id="opp-empty" class="empty-state" hidden>لا توجد نتائج مطابقة. جرّب كلمة أخرى أو أزل إحدى التصفيات.</p>
+      </section>
+      </section>
+
+      <!-- ===== الواجهة 3: دليل الأماكن والخريطة ===== -->
+      <section id="view-places" class="view" role="tabpanel" aria-labelledby="tab-places" data-view-title="الأماكن والخرائط" hidden>
+      <section id="directory" class="section directory" aria-labelledby="directory-title">
+        <header class="section__header">
+          <h1 id="directory-title" class="section__title" tabindex="-1">الأماكن والخرائط</h1>
+          <p class="section__lead">أماكن ومراكز في القاهرة والجيزة والإسكندرية، لكل منها مصدره. الحالة المعروضة هي ما يذكره المصدر وقد تتغير، فاتصل قبل الزيارة.</p>
+        </header>
+
+        <form class="filter-form" id="directory-filter" role="search" aria-labelledby="filter-title" novalidate
+              data-filter-form="directory" data-filter-list="directory-list" data-filter-count="directory-count" data-filter-empty="directory-empty">
+          <h3 id="filter-title" class="visually-hidden">تصفية الأماكن</h3>
+
+          <div class="form-field">
+            <label for="dir-search">ابحث عن مكان</label>
+            <input type="search" id="dir-search" name="q" autocomplete="off" data-filter-group="keyword" aria-describedby="dir-search-hint">
+            <p id="dir-search-hint" class="form-hint">اكتب اسم المكان أو الحي، مثال: متحف، برايل، مدينة نصر.</p>
+          </div>
+
+          <fieldset class="form-field">
+            <legend>نوع المكان</legend>
+            <div class="check-row">
+                  <label class="check"><input type="checkbox" name="type" value="medical" data-filter-group="place-type"> <span>مراكز وخدمات</span></label>
+              <label class="check"><input type="checkbox" name="type" value="public" data-filter-group="place-type"> <span>أماكن عامة</span></label>
+            </div>
+          </fieldset>
+
+                    <fieldset class="form-field">
+            <legend>المدينة</legend>
+            <div class="chip-row">
+              <button type="button" class="chip" data-filter-group="city" data-filter-value="all" aria-pressed="true">كل المدن</button>
+              <button type="button" class="chip" data-filter-group="city" data-filter-value="cairo" aria-pressed="false">القاهرة</button>
+              <button type="button" class="chip" data-filter-group="city" data-filter-value="giza" aria-pressed="false">الجيزة</button>
+              <button type="button" class="chip" data-filter-group="city" data-filter-value="alexandria" aria-pressed="false">الإسكندرية</button>
+            </div>
+            <p class="form-hint">البطاقات التي لا يحدد مصدرها مدينة (عبر الإنترنت أو على مستوى الجمهورية) تظهر تحت كل مدينة.</p>
+          </fieldset>
+
+<fieldset class="form-field">
+            <legend>فئة الإعاقة</legend>
+            <div class="check-row">
+              <label class="check"><input type="checkbox" name="need" value="visual" data-filter-group="access"> <span>بصرية</span></label>
+              <label class="check"><input type="checkbox" name="need" value="hearing" data-filter-group="access"> <span>سمعية</span></label>
+              <label class="check"><input type="checkbox" name="need" value="mobility" data-filter-group="access"> <span>حركية</span></label>
+              <label class="check"><input type="checkbox" name="need" value="cognitive" data-filter-group="access"> <span>ذهنية وتوحد</span></label>
+            </div>
+          </fieldset>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">تطبيق التصفية</button>
+            <button type="reset" class="btn btn--secondary" data-filter-reset>مسح التصفية</button>
+          </div>
+        </form>
+
+        <div class="places-layout" id="places-layout">
+
+          <!-- ===== العمود الأول: قائمة الأماكن (المصدر الوحيد للبيانات) ===== -->
+          <div class="places-layout__list">
+            <p id="directory-count" class="results-count">يعرض 6 أماكن</p>
+            <p class="map-jumps">
+              <a class="btn btn--secondary" href="#places-map" data-scroll="places-map">الانتقال إلى الخريطة</a>
+            </p>
+
+            <ul id="directory-list" class="place-list" role="list" aria-describedby="directory-count">
+          <!-- تُملأ من js/data.js عبر js/catalog.js -->
+        </ul>
+            <noscript><p class="empty-state">تحتاج هذه القائمة إلى تفعيل جافاسكربت. يمكنك البحث عن الأماكن يدويًا في خرائط جوجل.</p></noscript>
+
+            <p id="directory-empty" class="empty-state" hidden>لا يوجد مكان يطابق هذه التصفية. أزل إحدى التصفيات لعرض المزيد.</p>
+          </div>
+
+          <!-- ===== العمود الثاني: خريطة جوجل المدمجة (js/placemap.js) ===== -->
+          <section id="places-map" class="places-layout__map" aria-labelledby="places-map-title" tabindex="-1">
+            <h2 id="places-map-title" class="map-column__title">الخريطة</h2>
+            <p id="map-live" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+            <a id="map-skip" class="btn btn--secondary" href="#directory-list">تخطي الخريطة والانتقال إلى قائمة الأماكن</a>
+
+            <div id="map-stack" class="map-stack" role="group" aria-label="خريطة جوجل المدمجة للأماكن المهيأة في مصر" aria-describedby="map-desc">
+              <div id="gmap-frame" class="gmap-frame" aria-busy="false">
+                <p id="gmap-loading" class="gmap-frame__msg" hidden>جارٍ تحميل خرائط جوجل…</p>
+                <div id="gmap-error" class="gmap-frame__msg gmap-frame__msg--error" hidden>
+                  <p id="gmap-error-text"></p>
+                  <button type="button" id="gmap-retry" class="btn btn--secondary">إعادة المحاولة</button>
+                </div>
+                <iframe id="gmap-iframe" class="gmap-frame__iframe" title="خريطة جوجل: مصر" hidden
+                        referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+              </div>
+            </div>
+            <p id="map-desc" class="form-hint">تعرض الخريطة مصر كلها حتى تختار مكانًا، ثم تنتقل إليه. كل ما فيها متاح أيضًا في القائمة واللوحة التالية.</p>
+
+            <!-- بديل نصي كامل لما تعرضه الخريطة: لمن يعتمدون على قارئ الشاشة -->
+            <section id="map-selected" class="map-selected" aria-labelledby="map-selected-title">
+              <h3 id="map-selected-title" class="map-selected__title">المكان المعروض على الخريطة</h3>
+              <p id="ms-empty">لم تختر مكانًا بعد. اضغط «اعرض على الخريطة» في أي بطاقة، أو اضغط على بطاقة المكان نفسها.</p>
+              <div id="ms-body" hidden>
+                <p id="ms-name" class="map-selected__name"></p>
+                <dl class="map-selected__list">
+                  <div><dt>النوع والموقع</dt><dd id="ms-where"></dd></div>
+                  <div><dt>الحالة</dt><dd id="ms-status"></dd></div>
+                  <div><dt>العنوان المستخدم في البحث</dt><dd id="ms-query" dir="auto"></dd></div>
+                </dl>
+                <div class="map-selected__actions">
+                  <a id="ms-directions" class="btn btn--primary" href="#" target="_blank" rel="noopener noreferrer">اتجاهات عبر خرائط جوجل<span class="visually-hidden"> إلى المكان المعروض (يفتح في نافذة جديدة)</span></a>
+                  <a id="ms-external" class="btn btn--secondary" href="#" target="_blank" rel="noopener noreferrer">فتح الخريطة في نافذة جديدة<span class="visually-hidden"> للمكان المعروض</span></a>
+                </div>
+              </div>
+            </section>
+
+            <details id="map-text" class="map-details">
+              <summary>وصف الخريطة نصيًا</summary>
+              <div id="map-text-body" class="map-details__body"></div>
+            </details>
+          </section>
+
+        </div>
+      </section>
+      </section>
+
+      <!-- ===== الواجهة 4: إعدادات الوصول ===== -->
+      <section id="view-settings" class="view" role="tabpanel" aria-labelledby="tab-settings" data-view-title="الإعدادات" hidden>
+        <section id="settings" class="section settings" aria-labelledby="settings-title">
+          <header class="section__header">
+            <h1 id="settings-title" class="section__title" tabindex="-1">الإعدادات</h1>
+            <p class="section__lead">اضبط عرض المنصة بما يناسبك. كل تغيير يُطبَّق فورًا ويبقى في هذا المتصفح، وهو نفسه ما يتحكم فيه الشريط العلوي.</p>
+          </header>
+
+          <form id="settings-form" class="settings-grid" novalidate>
+
+            <fieldset class="settings-card">
+              <legend>حجم الخط</legend>
+              <div class="check-row" role="presentation">
+              <label class="check"><input type="radio" name="set-font" value="1"> <span>صغير (100%)</span></label>
+              <label class="check"><input type="radio" name="set-font" value="1.2"> <span>متوسط (120%)</span></label>
+              <label class="check"><input type="radio" name="set-font" value="1.5"> <span>كبير (150%)</span></label>
+              <label class="check"><input type="radio" name="set-font" value="2"> <span>كبير جدًا (200%)</span></label>
+              </div>
+              <p id="set-font-status" class="form-hint">الحجم الحالي: 100%. الحجم الصغير هو حجم الخط في متصفحك، ولا نصغّره عنه.</p>
+            </fieldset>
+
+            <fieldset class="settings-card">
+              <legend>التباين</legend>
+              <div class="check-row" role="presentation">
+              <label class="check"><input type="radio" name="set-contrast" value="standard"> <span>عادي</span></label>
+              <label class="check"><input type="radio" name="set-contrast" value="high"> <span>تباين عالٍ (أسود وأصفر)</span></label>
+              </div>
+              <p class="form-hint">التباين العالي يغطي على المظهر الفاتح والداكن.</p>
+            </fieldset>
+
+            <fieldset class="settings-card">
+              <legend>المظهر</legend>
+              <div class="check-row" role="presentation">
+              <label class="check"><input type="radio" name="set-theme" value="system"> <span>حسب جهازي</span></label>
+              <label class="check"><input type="radio" name="set-theme" value="light"> <span>فاتح</span></label>
+              <label class="check"><input type="radio" name="set-theme" value="dark"> <span>داكن</span></label>
+              </div>
+            </fieldset>
+
+            <fieldset class="settings-card">
+              <legend>الخط</legend>
+              <label class="check"><input type="checkbox" id="set-dyslexia" name="set-dyslexia"> <span>خط مناسب لعسر القراءة (مباعدة أكبر بين الحروف والأسطر)</span></label>
+            </fieldset>
+
+            <fieldset class="settings-card settings-card--wide">
+              <legend>القراءة بصوت عالٍ</legend>
+              <label class="check"><input type="checkbox" id="set-speech" name="set-speech" aria-describedby="set-speech-help"> <span>اقرأ البطاقة عند مرور المؤشر عليها أو الانتقال إليها بلوحة المفاتيح</span></label>
+              <p id="set-speech-help" class="form-hint">لا يبدأ الصوت من تلقاء نفسه عند فتح الصفحة، ويُوقَف بزر Esc أو بتغيير القسم.</p>
+              <div class="settings-sub">
+                <p id="set-rate-label" class="settings-sub__title">سرعة الصوت</p>
+                <div class="check-row" role="radiogroup" aria-labelledby="set-rate-label">
+              <label class="check"><input type="radio" name="set-rate" value="0.7"> <span>بطيء</span></label>
+              <label class="check"><input type="radio" name="set-rate" value="0.95"> <span>عادي</span></label>
+              <label class="check"><input type="radio" name="set-rate" value="1.2"> <span>سريع</span></label>
+              <label class="check"><input type="radio" name="set-rate" value="1.5"> <span>سريع جدًا</span></label>
+                </div>
+                <button type="button" id="btn-voice-preview" class="btn btn--secondary">جرّب الصوت</button>
+              </div>
+            </fieldset>
+
+            <div class="settings-actions">
+              <button type="button" id="btn-reset-settings" class="btn btn--secondary">إعادة الضبط إلى الإعدادات الافتراضية</button>
+            </div>
+
+          </form>
+        </section>
+      </section>
+
+    </main>
+
+    <!-- ===== التذييل ===== -->
+    <footer class="site-footer" role="contentinfo">
+      <div class="site-footer__grid">
+
+        <nav class="footer-nav" aria-labelledby="footer-links-title">
+          <h2 id="footer-links-title" class="footer-title">روابط مفيدة</h2>
+          <ul class="footer-list">
+            <li><a href="/accessibility-statement">بيان سهولة الوصول</a></li>
+            <li><a href="/keyboard-guide">دليل لوحة المفاتيح</a></li>
+            <li><a href="/privacy">سياسة الخصوصية</a></li>
+            <li><a href="/terms">شروط الاستخدام</a></li>
+            <li><a href="/feedback">أبلغ عن عائق وصول</a></li>
+          </ul>
+        </nav>
+
+        <section id="contact" class="footer-contact" aria-labelledby="footer-contact-title">
+          <h2 id="footer-contact-title" class="footer-title">اتصل بنا</h2>
+          <address class="footer-address">
+            <p>الخط الساخن للدعم: <a href="tel:+201040289089"><bdi dir="ltr">+20 104 028 9089</bdi></a></p>
+            <p>البريد الإلكتروني: <a href="mailto:omarmostafa1358@gmail.com"><bdi dir="ltr">omarmostafa1358@gmail.com</bdi></a></p>
+            <p>رسائل نصية للصم وضعاف السمع: <a href="sms:+201040289089"><bdi dir="ltr">+20 104 028 9089</bdi></a></p>
+          </address>
+        </section>
+
+        <section class="footer-emergency" aria-labelledby="footer-emergency-title">
+          <h2 id="footer-emergency-title" class="footer-title">أرقام الطوارئ</h2>
+          <ul class="footer-list">
+            <li>الإسعاف: <a href="tel:123"><bdi dir="ltr">123</bdi></a></li>
+            <li>الشرطة: <a href="tel:122"><bdi dir="ltr">122</bdi></a></li>
+            <li>الحماية المدنية: <a href="tel:180"><bdi dir="ltr">180</bdi></a></li>
+          </ul>
+        </section>
+
+        <section class="footer-badge" aria-labelledby="footer-badge-title">
+          <h2 id="footer-badge-title" class="footer-title">التزامنا</h2>
+          <p class="a11y-badge">
+            <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm-1.2 14.2L7 12.4l1.4-1.4 2.4 2.4 4.8-4.8L17 10l-6.2 6.2Z" fill="currentColor"/></svg>
+            <span>مصمم وفق WCAG 2.1 مستوى AA</span>
+          </p>
+          <p class="footer-note">نختبر الموقع بلوحة المفاتيح وقارئات الشاشة، ونرحّب بملاحظاتك.</p>
+        </section>
+
+      </div>
+      <p class="site-footer__copy">© 2026 آورا أكسس. جميع الحقوق محفوظة.</p>
+    </footer>
+
+  </div>
+
+  <!-- ===== نافذة الحجز والمساعدة ===== -->
+  <div id="booking-modal" class="modal" data-modal aria-hidden="true" hidden>
+    <div class="modal__backdrop" data-close-modal></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="booking-title" aria-describedby="booking-desc"
+         tabindex="-1" data-focus-trap data-return-focus="true">
+
+      <header class="modal__header">
+        <h2 id="booking-title" class="modal__title" tabindex="-1" data-initial-focus>احجز جلسة دعم أو اطلب مساعدة</h2>
+        <button type="button" class="icon-btn modal__close" data-close-modal data-focus-first aria-label="إغلاق النافذة">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </header>
+
+      <p id="booking-desc" class="modal__desc">هذه النسخة التجريبية لا ترسل بياناتك إلى أي جهة. للتسجيل الفعلي استخدم الرابط الرسمي أو تواصل مع الجهة مباشرة من مصدرها في البطاقة. الحقول التي عليها علامة * مطلوبة.</p>
+      <p id="booking-context" class="modal__context" data-modal-context hidden></p>
+
+      <form id="booking-form" class="booking-form" novalidate>
+
+        <div id="booking-errors" class="form-errors" role="alert" tabindex="-1" hidden>
+          <h3 id="booking-errors-title" class="form-errors__title">يرجى تصحيح الأخطاء التالية</h3>
+          <ul id="booking-errors-list"></ul>
+        </div>
+
+        <div class="form-field">
+          <label for="bk-name">الاسم الكامل <span aria-hidden="true">*</span></label>
+          <input type="text" id="bk-name" name="name" dir="auto" autocomplete="name" required aria-required="true" aria-describedby="bk-name-err">
+          <p id="bk-name-err" class="form-error" hidden></p>
+        </div>
+
+        <div class="form-field">
+          <label for="bk-contact">البريد الإلكتروني أو رقم الهاتف <span aria-hidden="true">*</span></label>
+          <input type="text" id="bk-contact" name="contact" dir="auto" autocomplete="email" required aria-required="true" aria-describedby="bk-contact-err">
+          <p id="bk-contact-err" class="form-error" hidden></p>
+        </div>
+
+        <div class="form-field">
+          <label for="bk-type">نوع المساعدة <span aria-hidden="true">*</span></label>
+          <select id="bk-type" name="type" required aria-required="true" aria-describedby="bk-type-err">
+            <option value="">اختر نوع المساعدة</option>
+            <option value="interpreter">مترجم لغة إشارة</option>
+            <option value="screen-reader">شرح لقارئ الشاشة</option>
+            <option value="mobility">مكان اجتماع بلا درجات</option>
+            <option value="enroll">مساعدة في التسجيل بدورة</option>
+            <option value="other">أمر آخر</option>
+          </select>
+          <p id="bk-type-err" class="form-error" hidden></p>
+        </div>
+
+        <fieldset class="form-field">
+          <legend>طريقة التواصل المفضلة</legend>
+          <div class="check-row">
+            <label class="check"><input type="radio" name="channel" value="text" checked> <span>رسالة نصية</span></label>
+            <label class="check"><input type="radio" name="channel" value="call"> <span>مكالمة</span></label>
+            <label class="check"><input type="radio" name="channel" value="video"> <span>فيديو بلغة الإشارة</span></label>
+          </div>
+        </fieldset>
+
+        <div class="form-field">
+          <label for="bk-date">التاريخ المفضل (اختياري)</label>
+          <input type="date" id="bk-date" name="date" aria-describedby="bk-date-hint">
+          <p id="bk-date-hint" class="form-hint">اختر اليوم أو يومًا لاحقًا.</p>
+          <p id="bk-date-err" class="form-error" hidden></p>
+        </div>
+
+        <div class="form-field">
+          <label for="bk-notes">ملاحظات (اختياري)</label>
+          <textarea id="bk-notes" name="notes" rows="4"></textarea>
+        </div>
+
+        <div class="form-field">
+          <label class="check">
+            <input type="checkbox" id="bk-consent" name="consent" required aria-required="true" aria-describedby="bk-consent-err">
+            <span>أوافق على التواصل معي بخصوص هذا الطلب <span aria-hidden="true">*</span></span>
+          </label>
+          <p id="bk-consent-err" class="form-error" hidden></p>
+        </div>
+
+        <div class="modal__actions">
+          <button type="button" class="btn btn--secondary" data-close-modal>إلغاء</button>
+          <button type="submit" class="btn btn--primary">إرسال الطلب</button>
+        </div>
+      </form>
+
+      <div id="booking-success" class="modal__success" role="status" tabindex="-1" hidden>
+        <h3 id="booking-success-title" tabindex="-1">تم تسجيل طلبك في النسخة التجريبية</h3>
+        <p>لم يُرسل الطلب إلى أي جهة. تواصل مع الجهة مباشرة عبر المصدر المذكور في بطاقتها.</p>
+        <button type="button" class="btn btn--primary" data-close-modal>تم</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Blocking on purpose and last in the body: shows the right view before the first paint -->
+  <script src="js/router.js"></script>
+  <script src="js/shell.js"></script>
+</body>
+</html>
